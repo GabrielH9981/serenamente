@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Perfil | SerenaMente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+</head>
+<body>
+
+    {% include 'components/navbar.html' %}
+
+    <div class="container py-5">
+        <h2 class="mb-4">Editar Perfil</h2>
+
+        <form method="POST" enctype="multipart/form-data">
+
+
+        <div class="row mb-4 align-items-start">
+          <div class="col-md-8">
+            <div class="mb-3">
+              <label class="form-label">Dias restantes do seu plano</label>
+              <input type="text" class="form-control" value="{{ plan_days or '' }}" disabled>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Foto de Perfil</label>
+              <input type="file" id="inputImage" accept="image/*" class="form-control">
+              <input type="hidden" name="cropped_image" id="croppedImageInput">
+            </div>
+          </div>
+
+        <div class="col-md-4 text-center">
+          {% if profile.profile_picture_url %}
+            <img src="{{ url_for('static', filename=profile.profile_picture_url.split('static/')[-1]) }}"
+                 class="profile-picture-preview mb-2"
+                 alt="Foto de perfil">
+            <p class="text-muted">Foto atual</p>
+          {% else %}
+            <div class="profile-placeholder mb-2">
+              <i class="bi bi-person"></i>
+            </div>
+            <p class="text-muted">Nenhuma foto enviada</p>
+          {% endif %}
+        </div>
+        </div>
+
+
+            <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Ajustar Imagem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                  </div>
+                  <div class="modal-body">
+                    <img id="imagePreview" style="max-width: 100%;">
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" id="cropConfirmBtn" class="btn btn-success" data-bs-dismiss="modal">Confirmar corte</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Mini bio</label>
+                <input type="text" name="short_bio" class="form-control" value="{{ profile.short_bio or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descrição completa</label>
+                <textarea name="full_bio" class="form-control" rows="5">{{ profile.full_bio or '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Localização</label>
+                <input type="text" name="location" class="form-control" value="{{ profile.location or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Faixa de Preço (ex: 100-200)</label>
+                <input type="text" name="price_range" class="form-control" value="{{ profile.price_range or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Modalidades de atendimento</label><br>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="atendimento_online" value="1" {% if profile.atendimento_online %}checked{% endif %}>
+                    <label class="form-check-label">Online</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="atendimento_presencial" value="1" {% if profile.atendimento_presencial %}checked{% endif %}>
+                    <label class="form-check-label">Presencial</label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">WhatsApp</label>
+                <input type="text" name="whatsapp_number" class="form-control" value="{{ profile.whatsapp_number or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Instagram</label>
+                <input type="text" name="instagram_url" class="form-control" value="{{ profile.instagram_url or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Website</label>
+                <input type="text" name="website_url" class="form-control" value="{{ profile.website_url or '' }}">
+            </div>
+
+            <div class="form-section">
+                <h4 class="mt-4">Especialidades e Abordagens</h4>
+
+                <div class="mb-4">
+                    <label class="form-label">Abordagem Terapêutica</label>
+                    <select name="approach" class="form-select">
+                        <option value="">Selecione</option>
+                        {% for a in approaches %}
+                            <option value="{{ a.id }}" {% if a.id in selected_approaches %}selected{% endif %}>{{ a.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Experiências / Assuntos Dominados</label>
+                    <div class="row">
+                        {% for e in experiencias %}
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="experiencias" value="{{ e.id }}" {% if e.id in selected_experiencias %}checked{% endif %}>
+                                    <label class="form-check-label">{{ e.nome }}</label>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Público-Alvo</label>
+                    <div class="row">
+                        {% for p in publicos %}
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="publicos" value="{{ p.id }}" {% if p.id in selected_publicos %}checked{% endif %}>
+                                    <label class="form-check-label">{{ p.nome }}</label>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success">Salvar</button>
+        </form>
+    </div>
+
+    <script>
+      let cropper;
+      const inputImage = document.getElementById('inputImage');
+      const imagePreview = document.getElementById('imagePreview');
+      const croppedInput = document.getElementById('croppedImageInput');
+      const finalPreview = document.getElementById('finalPreview');
+      const finalPreviewContainer = document.getElementById('finalPreviewContainer');
+      const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
+
+      inputImage.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          imagePreview.src = event.target.result;
+
+          imagePreview.onload = function () {
+          cropperModal.show();
+
+          // Aguarda o modal renderizar antes de iniciar o cropper
+          setTimeout(() => {
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imagePreview, {
+              aspectRatio: 1,
+              viewMode: 1,
+              autoCropArea: 1
+            });
+          }, 200); // Pequeno atraso para garantir que o DOM esteja 100%
+        };
+
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('cropConfirmBtn').addEventListener('click', function () {
+        const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 });
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        croppedInput.value = dataUrl;
+        finalPreview.src = dataUrl;
+        finalPreviewContainer.style.display = 'block';
+      });
+    </script>
+</body>
+</html>

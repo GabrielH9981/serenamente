@@ -1,0 +1,82 @@
+body {
+    background-color: #f9f9fb;
+    font-family: 'Inter', sans-serif;
+}
+.hero {
+    background: linear-gradient(135deg, #B9AFFF, #EDEBFF);
+    padding: 60px 20px;
+    text-align: center;
+    border-radius: 0 0 30px 30px;
+    margin-bottom: 40px;
+}
+.hero h2 {
+    font-weight: 700;
+    color: #4a4a4a;
+}
+.hero p {
+    font-size: 1.1rem;
+    color: #6B7280;
+}
+.form-label {
+    font-weight: 500;
+    color: #4a4a4a;
+}
+.form-select,
+.form-control {
+    border-radius: 10px;
+}
+.btn-primary {
+    background-color: #6C63FF;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+}
+.btn-primary:hover {
+    background-color: #574fd6;
+}
+.card {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-5px);
+}
+.card-img-top {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    height: 220px;
+    object-fit: cover;
+}
+.card-title {
+    font-weight: 600;
+    color: #333;
+}
+.card-text {
+    color: #666;
+    font-size: 0.95rem;
+}
+.btn-outline-primary {
+    color: #6C63FF;
+    border-color: #6C63FF;
+    border-radius: 10px;
+    font-weight: 500;
+}
+.btn-outline-primary:hover {
+    background-color: #6C63FF;
+    color: #fff;
+}
+footer {
+    background-color: #EDEBFF;
+    padding: 30px 0;
+    text-align: center;
+    margin-top: 60px;
+    border-top: 1px solid #ddd;
+}
+footer p, footer a {
+    color: #6B7280;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}

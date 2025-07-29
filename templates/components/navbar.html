@@ -1,0 +1,55 @@
+<!-- NAVBAR COM IDENTIDADE SERENAMENTE -->
+<nav class="navbar navbar-expand-lg shadow-sm" style="background-color: #6C63FF;">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold text-white" href="/">SerenaMente</a>
+
+    <!-- Botão hamburguer para mobile -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Menu normal (aparece apenas em telas grandes) -->
+    <div class="collapse navbar-collapse d-none d-lg-flex justify-content-end">
+      <ul class="navbar-nav mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link text-white" href="/psicologos">Sou Paciente</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/parceiro">Sou Psicólogo(a)</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="#sobre">Sobre Nós</a></li>
+        {% if session.get('user_id') %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+              {{ session['user_name'] }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/perfil">Editar Perfil</a></li>
+              <li><a class="dropdown-item" href="/logout">Sair</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="btn btn-light text-primary fw-semibold ms-3" href="/login" style="border-radius: 20px;">Login</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- MENU LATERAL (OFFCANVAS) - só aparece no mobile -->
+<div class="offcanvas offcanvas-end d-lg-none" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasNavLabel">Menu</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body">
+    <a href="/psicologos" class="nav-link mb-2">Sou Paciente</a>
+    <a href="/parceiro" class="nav-link mb-2">Sou Psicólogo(a)</a>
+    <a href="#sobre" class="nav-link mb-2">Sobre Nós</a>
+    {% if session.get('user_id') %}
+      <hr>
+      <a href="/perfil" class="nav-link">Editar Perfil</a>
+      <a href="/logout" class="nav-link">Sair</a>
+    {% else %}
+      <a href="/login" class="btn btn-primary w-100 mt-3" style="background-color: #6C63FF; border: none;">Login</a>
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>SerenaMente | Catálogo de Psicólogos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/publicos.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+{% include 'components/navbar.html' %}
+
+<section class="hero">
+    <div class="container">
+        <h2>Encontre o Psicólogo Ideal para Você</h2>
+        <p>Filtre por especialidade, abordagem e escolha com quem você mais se identifica.</p>
+    </div>
+</section>
+
+<div class="container py-4">
+    <form method="get" class="mb-5">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Modalidade</label>
+                <select name="modalidade" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="online" {{ 'selected' if request.args.get('modalidade') == 'online' }}>Online</option>
+                    <option value="presencial" {{ 'selected' if request.args.get('modalidade') == 'presencial' }}>Presencial</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Abordagem Terapêutica</label>
+                <select name="approach" class="form-select">
+                    <option value="">Todas</option>
+                    {% for a in abordagens %}
+                        <option value="{{ a.id }}" {{ 'selected' if request.args.get('approach') == a.id|string }}> {{ a.name }} </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Especialidade / Experiência</label>
+                <select name="experiencia" class="form-select">
+                    <option value="">Todas</option>
+                    {% for e in experiencias %}
+                        <option value="{{ e.id }}" {{ 'selected' if request.args.get('experiencia') == e.id|string }}> {{ e.nome }} </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Público-Alvo</label>
+                <select name="publico" class="form-select">
+                    <option value="">Todos</option>
+                    {% for p in publicos %}
+                        <option value="{{ p.id }}" {{ 'selected' if request.args.get('publico') == p.id|string }}> {{ p.nome }} </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Faixa de Preço</label>
+                <select name="valor" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="0-100" {{ 'selected' if request.args.get('valor') == '0-100' }}>Até 100</option>
+                    <option value="101-200" {{ 'selected' if request.args.get('valor') == '101-200' }}>101 a 200</option>
+                    <option value="201-9999" {{ 'selected' if request.args.get('valor') == '201-9999' }}>Mais de 200</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Nome do Terapeuta</label>
+                <input type="text" name="nome" class="form-control" placeholder="Digite o nome" value="{{ request.args.get('nome', '') }}">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Buscar</button>
+    </form>
+
+    <div class="row">
+        {% for p in perfis %}
+        <div class="col-12 col-sm-6 col-md-4 mb-4">
+            <div class="card h-100">
+                {% if p.profile_picture_url %}
+                <img src="{{ url_for('static', filename=p.profile_picture_url) }}" class="card-img-top" alt="{{ p.name }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ p.name }}</h5>
+                    <p class="card-text">{{ p.short_bio or '' }}</p>
+                    <p><i class="bi bi-geo-alt-fill me-1 text-primary"></i><strong> Localização:</strong> {{ p.location or 'Não informada' }}</p>
+                    <p><strong>Atende:</strong>
+                        {% if p.atendimento_online %}Online{% endif %}
+                        {% if p.atendimento_online and p.atendimento_presencial %} / {% endif %}
+                        {% if p.atendimento_presencial %}Presencial{% endif %}
+                    </p>
+                    <a href="{{ url_for('psicologos.perfil_publico', profile_id=p.id) }}" class="btn btn-outline-primary btn-sm">Ver perfil completo</a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p>Nenhum psicólogo encontrado com os filtros selecionados.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<footer>
+    <p class="mb-1">&copy; 2025 SerenaMente. Todos os direitos reservados.</p>
+    <a href="/termos">Termos de Uso</a> | <a href="/privacidade">Política de Privacidade</a>
+</footer>
+
+</body>
+</html>

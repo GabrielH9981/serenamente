@@ -1,0 +1,86 @@
+body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #6C63FF, #8A85FF);
+      color: white;
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 2.7rem;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+    }
+
+    .beneficios {
+      padding: 60px 20px;
+    }
+
+    .beneficios h2 {
+      text-align: center;
+      margin-bottom: 40px;
+      color: #6C63FF;
+    }
+
+    .beneficio-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .beneficio-item i {
+      font-size: 1.5rem;
+      color: #6C63FF;
+    }
+
+    .planos {
+      padding: 60px 20px;
+      background-color: #f8f9fa;
+    }
+
+    .planos h2 {
+      text-align: center;
+      margin-bottom: 40px;
+      color: #6C63FF;
+    }
+
+    .card {
+      transition: transform 0.3s ease;
+      border-radius: 12px;
+    }
+
+    .card:hover {
+      transform: scale(1.03);
+    }
+
+    .card-title {
+      color: #6C63FF;
+      font-weight: 600;
+    }
+
+    .cta-buttons {
+      text-align: center;
+      margin-top: 50px;
+    }
+
+    .cta-buttons .btn {
+      margin: 10px;
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      border-radius: 8px;
+    }
+
+    footer {
+      background-color: #f1f1f1;
+      padding: 20px;
+      text-align: center;
+      margin-top: 60px;
+    }

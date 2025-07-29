@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Plataforma de Psicólogos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Fonte Inter + Bootstrap -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+
+<body>
+    <div class="container d-flex align-items-center justify-content-center min-vh-100">
+        <div class="login-box">
+            <h2 class="mb-4 text-center">Entrar na Plataforma</h2>
+
+            {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-control" name="email" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Senha</label>
+                    <input type="password" class="form-control" name="senha" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-3">Entrar</button>
+            </form>
+
+            <p class="text-center text-muted mt-3">
+                Ainda não tem conta? <a href="{{ url_for('auth.register') }}">Cadastre-se</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

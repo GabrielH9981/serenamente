@@ -1,0 +1,17 @@
+.navbar .nav-link {
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.navbar .nav-link:hover {
+  opacity: 0.85;
+}
+
+.navbar .btn-light {
+  background-color: #fff;
+  border: none;
+}
+
+.navbar .btn-light:hover {
+  background-color: #f0f0f0;
+}

@@ -1,0 +1,25 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
+}
+
+.login-box {
+    max-width: 400px;
+    margin: auto;
+    padding: 2.5rem;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+.btn-primary {
+    border-radius: 8px;
+}
+
+.text-muted a {
+    text-decoration: none;
+}

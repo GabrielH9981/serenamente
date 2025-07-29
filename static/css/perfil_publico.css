@@ -1,0 +1,36 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f4f6fa;
+}
+.card {
+    border: none;
+    border-radius: 16px;
+}
+.section-title {
+    font-weight: 700;
+    color: #6C63FF;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.badge {
+    font-size: 0.85rem;
+    margin: 0.2rem;
+    padding: 0.5em 0.75em;
+    border-radius: 6px;
+}
+.btn {
+    border-radius: 8px;
+}
+.profile-image {
+    max-width: 200px;
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease;
+}
+.profile-image:hover {
+    transform: scale(1.04);
+}
