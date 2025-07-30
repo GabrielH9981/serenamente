@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Admin | SerenaMente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>Painel do Administrador</h2>
+      <a href="{{ url_for('admin.admin_logout') }}" class="btn btn-outline-danger">Sair</a>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Gerar Código de Ativação</h5>
+        <form method="POST">
+          <input type="hidden" name="acao" value="gerar_codigo">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label>ID do Usuário</label>
+              <input type="number" name="user_id" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label>Duração do Plano (dias)</label>
+              <select name="dias" class="form-select" required>
+                <option value="30">30 dias</option>
+                <option value="90">90 dias</option>
+                <option value="180">180 dias</option>
+              </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end mb-3">
+              <button type="submit" class="btn btn-success w-100">Gerar Código</button>
+            </div>
+          </div>
+        </form>
+        {% if codigo %}
+          <div class="alert alert-info mt-3">
+            Código gerado: <strong>{{ codigo }}</strong>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Desativar Planos Expirados</h5>
+        <form method="POST">
+          <input type="hidden" name="acao" value="desativar_expirados">
+          <button class="btn btn-danger">Desativar Usuários com Plano Expirado</button>
+        </form>
+        {% if desativados %}
+          <div class="alert alert-warning mt-3">
+            {{ desativados|length }} usuário(s) desativado(s): {{ desativados | join(', ') }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
