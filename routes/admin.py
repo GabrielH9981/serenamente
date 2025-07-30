@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from db.db import get_db_connection
-import secrets, string, datetime
+import secrets, string
+from datetime import datetime, timedelta  # ✅ Mantém apenas a classe e função necessárias
 import os
 
 admin_bp = Blueprint('admin', __name__)
@@ -55,7 +56,7 @@ def painel_admin():
             codigo_gerado = codigo
 
         elif request.form.get('acao') == 'desativar_expirados':
-            hoje = datetime.datetime.now()
+            hoje = datetime.now()
             cursor.execute("""
                 SELECT ac.user_id, ac.activated_at, ac.plan_duration_days
                 FROM activation_codes ac
@@ -64,13 +65,52 @@ def painel_admin():
             """)
 
             for row in cursor.fetchall():
-                expirado = row['activated_at'] + datetime.timedelta(days=row['plan_duration_days'])
+                expirado = row['activated_at'] + timedelta(days=row['plan_duration_days'])
                 if hoje > expirado:
                     desativados.append(row['user_id'])
                     cursor.execute("UPDATE users SET is_active = 0 WHERE id = %s", (row['user_id'],))
             conn.commit()
 
+    # NOVO BLOCO: Visualizações
+    periodo = request.args.get('periodo', '7')
+    hoje = datetime.utcnow()
+
+    if periodo == '30':
+        data_limite = hoje - timedelta(days=30)
+    elif periodo == 'all':
+        data_limite = None
+    else:
+        data_limite = hoje - timedelta(days=7)
+
+    if data_limite:
+        cursor.execute("""
+            SELECT pv.profile_id, COUNT(*) AS total_views, u.name
+            FROM profile_views pv
+            JOIN profiles p ON pv.profile_id = p.id
+            JOIN users u ON p.user_id = u.id
+            WHERE pv.viewed_at >= %s
+            GROUP BY pv.profile_id
+            ORDER BY total_views DESC
+            LIMIT 10
+        """, (data_limite,))
+    else:
+        cursor.execute("""
+            SELECT pv.profile_id, COUNT(*) AS total_views, u.name
+            FROM profile_views pv
+            JOIN profiles p ON pv.profile_id = p.id
+            JOIN users u ON p.user_id = u.id
+            GROUP BY pv.profile_id
+            ORDER BY total_views DESC
+            LIMIT 10
+        """)
+
+    mais_visualizados = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
-    return render_template('admin_painel.html', codigo=codigo_gerado, desativados=desativados)
+    return render_template('admin_painel.html',
+                           codigo=codigo_gerado,
+                           desativados=desativados,
+                           mais_visualizados=mais_visualizados,
+                           periodo=periodo)

@@ -59,6 +59,48 @@
         {% endif %}
       </div>
     </div>
+
+    <hr class="my-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-4">Perfis Mais Visualizados</h5>
+
+        <form method="get" class="mb-3 d-flex align-items-center gap-2">
+          <label for="periodo" class="form-label mb-0">Período:</label>
+          <select name="periodo" id="periodo" class="form-select w-auto">
+            <option value="7" {{ 'selected' if periodo == '7' }}>Últimos 7 dias</option>
+            <option value="30" {{ 'selected' if periodo == '30' }}>Últimos 30 dias</option>
+            <option value="all" {{ 'selected' if periodo == 'all' }}>Todos os tempos</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        </form>
+
+        <table class="table table-sm table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Psicólogo</th>
+              <th>Visualizações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in mais_visualizados %}
+            <tr>
+              <td>
+                <a href="{{ url_for('psicologos.perfil_publico', profile_id=v.profile_id) }}" target="_blank">
+                  {{ v.name }}
+                </a>
+              </td>
+              <td>{{ v.total_views }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2">Nenhum dado encontrado no período selecionado.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 </body>
