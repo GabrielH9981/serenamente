@@ -76,6 +76,21 @@ def perfil_publico(profile_id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
+    # ✅ Registrar visualização se ainda não houver no dia
+    viewer_ip = request.remote_addr
+    cursor.execute("""
+        SELECT 1 FROM profile_views
+        WHERE profile_id = %s AND viewer_ip = %s AND DATE(viewed_at) = CURDATE()
+    """, (profile_id, viewer_ip))
+
+    if not cursor.fetchone():
+        cursor.execute("""
+            INSERT INTO profile_views (profile_id, viewer_ip)
+            VALUES (%s, %s)
+        """, (profile_id, viewer_ip))
+        conn.commit()
+
+    # Obter dados do perfil
     cursor.execute("""
         SELECT p.*, u.name, u.crp
         FROM profiles p
@@ -89,6 +104,7 @@ def perfil_publico(profile_id):
         conn.close()
         return "Perfil não encontrado", 404
 
+    # Abordagens
     cursor.execute("""
         SELECT a.* FROM approaches a
         JOIN profile_approaches pa ON pa.approach_id = a.id
@@ -96,6 +112,7 @@ def perfil_publico(profile_id):
     """, (profile_id,))
     abordagens = cursor.fetchall()
 
+    # Experiências
     cursor.execute("""
         SELECT e.* FROM experiencias e
         JOIN profile_experiencias pe ON pe.experiencia_id = e.id
@@ -103,6 +120,7 @@ def perfil_publico(profile_id):
     """, (profile_id,))
     experiencias = cursor.fetchall()
 
+    # Públicos-alvo
     cursor.execute("""
         SELECT p.* FROM publicos_alvo p
         JOIN profile_publicos_alvo pp ON pp.publico_id = p.id
@@ -118,3 +136,4 @@ def perfil_publico(profile_id):
                            abordagens=abordagens,
                            experiencias=experiencias,
                            publicos=publicos)
+
