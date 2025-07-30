@@ -82,9 +82,14 @@
         {% for p in perfis %}
         <div class="col-12 col-sm-6 col-md-4 mb-4">
             <div class="card h-100">
-                {% if p.profile_picture_url %}
-                <img src="{{ url_for('static', filename=p.profile_picture_url) }}" class="card-img-top" alt="{{ p.name }}">
-                {% endif %}
+
+                <a href="{{ url_for('psicologos.perfil_publico', profile_id=p.id) }}">
+                  <div class="square-image-container">
+                    <img src="{{ p.profile_picture_url if p.profile_picture_url and p.profile_picture_url.startswith('http') else url_for('static', filename=p.profile_picture_url or 'static/img/default_profile.jpg') }}"
+                         alt="{{ p.name }}">
+                  </div>
+                </a>
+
                 <div class="card-body">
                     <h5 class="card-title">{{ p.name }}</h5>
                     <p class="card-text">{{ p.short_bio or '' }}</p>

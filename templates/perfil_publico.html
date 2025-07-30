@@ -31,11 +31,7 @@
     <div class="card shadow-sm p-4">
         <div class="row g-4 flex-column flex-md-row">
             <div class="col-md-4 text-center">
-                {% if profile.profile_picture_url %}
-                    <img src="{{ url_for('static', filename=profile.profile_picture_url.split('static/')[-1]) }}" class="img-fluid rounded-circle profile-image" alt="{{ profile.name }}">
-                {% else %}
-                    <img src="https://via.placeholder.com/200x200.png?text=Sem+Foto" class="profile-image" alt="Sem Foto">
-                {% endif %}
+                <img src="{{ profile.profile_picture_url if profile.profile_picture_url and profile.profile_picture_url.startswith('http') else url_for('static', filename=profile.profile_picture_url or 'static/img/default_profile.jpg') }}" class="card-img-top" alt="{{ profile.name }}">
             </div>
             <div class="col-md-8">
                 <h2 class="mb-1">{{ profile.name }}</h2>

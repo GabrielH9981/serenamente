@@ -5,6 +5,8 @@ import os, base64
 from PIL import Image
 from io import BytesIO
 import datetime
+from cloudinary.uploader import upload as cloudinary_upload
+from utils.cloudinary_config import cloudinary
 
 perfil_bp = Blueprint('perfil', __name__)
 
@@ -48,21 +50,20 @@ def perfil():
                 data = base64.b64decode(encoded)
                 img = Image.open(BytesIO(data)).convert("RGB")
 
-                # Apaga imagem anterior, se houver
-                if profile and profile.get('profile_picture_url'):
-                    old_path = os.path.join('static', profile['profile_picture_url'])
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-
-                # Salva nova imagem
-                filename = f"profile_{session['user_id']}.jpg"
-                save_path = os.path.join('static/uploads', filename)
+                # Redimensiona
                 img = img.resize((300, 300))
-                img.save(save_path, format='JPEG')
-                image_filename = f"uploads/{filename}"
-            except Exception as e:
-                print("Erro ao salvar imagem recortada:", e)
 
+                # Converte para buffer
+                buffer = BytesIO()
+                img.save(buffer, format="JPEG")
+                buffer.seek(0)
+
+                # Upload para Cloudinary
+                result = cloudinary_upload(buffer, folder="serenamente/perfis",
+                                           public_id=f"profile_{session['user_id']}", overwrite=True)
+                image_filename = result['secure_url']
+            except Exception as e:
+                print("Erro ao salvar imagem no Cloudinary:", e)
 
         data = {
             'short_bio': request.form.get('short_bio'),

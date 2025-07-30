@@ -37,20 +37,26 @@
           </div>
 
         <div class="col-md-4 text-center">
-          {% if profile.profile_picture_url %}
-            <img src="{{ url_for('static', filename=profile.profile_picture_url.split('static/')[-1]) }}"
-                 class="profile-picture-preview mb-2"
-                 alt="Foto de perfil">
-            <p class="text-muted">Foto atual</p>
-          {% else %}
-            <div class="profile-placeholder mb-2">
-              <i class="bi bi-person"></i>
-            </div>
-            <p class="text-muted">Nenhuma foto enviada</p>
-          {% endif %}
-        </div>
-        </div>
+            {% if profile.profile_picture_url %}
+              {% if profile.profile_picture_url.startswith('http') %}
+                <img src="{{ profile.profile_picture_url }}"
+                     class="profile-picture-preview mb-2"
+                     alt="Foto de perfil">
+              {% else %}
+                <img src="{{ url_for('static', filename=profile.profile_picture_url) }}"
+                     class="profile-picture-preview mb-2"
+                     alt="Foto de perfil">
+              {% endif %}
+              <p class="text-muted">Foto atual</p>
+            {% else %}
+              <div class="profile-placeholder mb-2">
+                <i class="bi bi-person"></i>
+              </div>
+              <p class="text-muted">Nenhuma foto enviada</p>
+            {% endif %}
 
+        </div>
+        </div>
 
             <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
               <div class="modal-dialog modal-lg modal-dialog-centered">
