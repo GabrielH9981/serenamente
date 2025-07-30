@@ -1,6 +1,7 @@
 # routes/psicologos.py
 from flask import Blueprint, render_template, request
 from db.db import get_db_connection
+import datetime
 
 psicologos_bp = Blueprint('psicologos', __name__)
 
@@ -71,26 +72,34 @@ def psicologos_publicos():
                            publicos=publicos)
 
 
+from flask import request
+
 @psicologos_bp.route('/psicologo/<int:profile_id>')
 def perfil_publico(profile_id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # ✅ Registrar visualização se ainda não houver no dia
     viewer_ip = request.remote_addr
-    cursor.execute("""
-        SELECT 1 FROM profile_views
-        WHERE profile_id = %s AND viewer_ip = %s AND DATE(viewed_at) = CURDATE()
-    """, (profile_id, viewer_ip))
 
-    if not cursor.fetchone():
-        cursor.execute("""
-            INSERT INTO profile_views (profile_id, viewer_ip)
-            VALUES (%s, %s)
+    # Verifica se já há visualização desse IP para esse perfil nas últimas 24h
+    cursor.execute("""
+            SELECT viewed_at FROM profile_views
+            WHERE profile_id = %s AND viewer_ip = %s
+            ORDER BY viewed_at DESC
+            LIMIT 1
         """, (profile_id, viewer_ip))
+
+    last_view = cursor.fetchone()
+    now = datetime.datetime.utcnow()
+
+    if not last_view or (now - last_view['viewed_at']) > datetime.timedelta(hours=24):
+        cursor.execute("""
+                INSERT INTO profile_views (profile_id, viewer_ip)
+                VALUES (%s, %s)
+            """, (profile_id, viewer_ip))
         conn.commit()
 
-    # Obter dados do perfil
+    # Consulta dos dados do perfil (como já está na sua rota)
     cursor.execute("""
         SELECT p.*, u.name, u.crp
         FROM profiles p
@@ -104,7 +113,6 @@ def perfil_publico(profile_id):
         conn.close()
         return "Perfil não encontrado", 404
 
-    # Abordagens
     cursor.execute("""
         SELECT a.* FROM approaches a
         JOIN profile_approaches pa ON pa.approach_id = a.id
@@ -112,7 +120,6 @@ def perfil_publico(profile_id):
     """, (profile_id,))
     abordagens = cursor.fetchall()
 
-    # Experiências
     cursor.execute("""
         SELECT e.* FROM experiencias e
         JOIN profile_experiencias pe ON pe.experiencia_id = e.id
@@ -120,7 +127,6 @@ def perfil_publico(profile_id):
     """, (profile_id,))
     experiencias = cursor.fetchall()
 
-    # Públicos-alvo
     cursor.execute("""
         SELECT p.* FROM publicos_alvo p
         JOIN profile_publicos_alvo pp ON pp.publico_id = p.id
@@ -136,4 +142,3 @@ def perfil_publico(profile_id):
                            abordagens=abordagens,
                            experiencias=experiencias,
                            publicos=publicos)
-
