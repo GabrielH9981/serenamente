@@ -12,8 +12,9 @@ import mysql.connector
 
 def get_db_connection():
     return mysql.connector.connect(
-        host='sql113.infinityfree.com',
-        user='if0_39591777',
-        password='bK9WeRBZcl4j',
-        database='if0_39591777_XXX'
+        host='sql10.freesqldatabase.com',
+        user='sql10792657',
+        password='wZBiQYslSB',
+        database='sql10792657',
+        port=3306
     )
