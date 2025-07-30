@@ -37,25 +37,35 @@
           </div>
 
         <div class="col-md-4 text-center">
-            {% if profile.profile_picture_url %}
-              {% if profile.profile_picture_url.startswith('http') %}
-                <img src="{{ profile.profile_picture_url }}"
-                     class="profile-picture-preview mb-2"
-                     alt="Foto de perfil">
-              {% else %}
-                <img src="{{ url_for('static', filename=profile.profile_picture_url) }}"
-                     class="profile-picture-preview mb-2"
-                     alt="Foto de perfil">
-              {% endif %}
-              <p class="text-muted">Foto atual</p>
-            {% else %}
-              <div class="profile-placeholder mb-2">
-                <i class="bi bi-person"></i>
-              </div>
-              <p class="text-muted">Nenhuma foto enviada</p>
-            {% endif %}
+            <div id="finalPreviewContainer" class="d-flex flex-column align-items-center text-center">
+              <img id="finalPreview"
+                   class="profile-picture-preview mb-2"
+                   alt="Prévia da nova foto"
+                   style="display: none; border: 3px solid #6C63FF; border-radius: 10px;" />
+              <p id="previewLabel" class="text-muted mt-1" style="display: none;">Prévia da nova foto</p>
+            </div>
 
-        </div>
+            <div id="originalPreviewWrapper" class="text-center">
+              {% if profile.profile_picture_url %}
+                {% if profile.profile_picture_url.startswith('http') %}
+                  <img id="originalProfilePic" src="{{ profile.profile_picture_url }}"
+                       class="profile-picture-preview mb-2"
+                       alt="Foto atual">
+                {% else %}
+                  <img id="originalProfilePic" src="{{ url_for('static', filename=profile.profile_picture_url) }}"
+                       class="profile-picture-preview mb-2"
+                       alt="Foto atual">
+                {% endif %}
+                <p id="originalText" class="text-muted">Foto atual</p>
+              {% else %}
+                <div class="d-flex flex-column align-items-center text-center">
+                  <div id="originalProfilePic" class="profile-placeholder mb-2">
+                    <i class="bi bi-person"></i>
+                  </div>
+                  <p id="originalText" class="text-muted">Nenhuma foto enviada</p>
+                </div>
+              {% endif %}
+            </div>
         </div>
 
             <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
@@ -208,7 +218,14 @@
         const dataUrl = canvas.toDataURL('image/jpeg');
         croppedInput.value = dataUrl;
         finalPreview.src = dataUrl;
-        finalPreviewContainer.style.display = 'block';
+        finalPreview.style.display = 'block';
+        document.getElementById('previewLabel').style.display = 'block';
+
+        // Oculta a imagem e o texto antigos
+        const originalPic = document.getElementById('originalProfilePic');
+        const originalText = document.getElementById('originalText');
+        if (originalPic) originalPic.style.display = 'none';
+        if (originalText) originalText.style.display = 'none';
       });
     </script>
 </body>
