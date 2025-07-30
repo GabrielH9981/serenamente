@@ -1,0 +1,28 @@
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f8f9fa;
+}
+
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary {
+  background-color: #6C63FF;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #5b54e2;
+}
+
+a {
+  color: #6C63FF;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
