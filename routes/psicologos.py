@@ -2,6 +2,8 @@
 from flask import Blueprint, render_template, request, session
 from db.db import get_db_connection
 from datetime import datetime, timedelta
+import math
+import random
 
 psicologos_bp = Blueprint('psicologos', __name__)
 
@@ -59,20 +61,33 @@ def psicologos_publicos():
         query += " AND p.id IN (SELECT profile_id FROM profile_publicos_alvo WHERE publico_id = %s)"
         params.append(publico_id)
 
+    # Pagina atual e páginação
+    page = int(request.args.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+
+    # Buscar todos os perfis que satisfazem os filtros
     cursor.execute(query, params)
-    perfis = cursor.fetchall()
+    all_profiles = cursor.fetchall()
+    total = len(all_profiles)
+
+    # Embaralha aleatoriamente para cada requisição
+    random.shuffle(all_profiles)
+    perfis_paginados = all_profiles[offset:offset + per_page]
+
+    total_pages = math.ceil(total / per_page)
 
     cursor.close()
     conn.close()
 
     return render_template("publicos.html",
-                           perfis=perfis,
+                           perfis=perfis_paginados,
                            abordagens=abordagens,
                            experiencias=experiencias,
-                           publicos=publicos)
+                           publicos=publicos,
+                           current_page=page,
+                           total_pages=total_pages)
 
-
-from flask import request
 
 @psicologos_bp.route('/psicologo/<int:profile_id>')
 def perfil_publico(profile_id):
