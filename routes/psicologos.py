@@ -29,6 +29,7 @@ def psicologos_publicos():
     """
     params = []
 
+    # Filtros
     nome = request.args.get('nome')
     if nome:
         query += " AND u.name LIKE %s"
@@ -61,21 +62,42 @@ def psicologos_publicos():
         query += " AND p.id IN (SELECT profile_id FROM profile_publicos_alvo WHERE publico_id = %s)"
         params.append(publico_id)
 
-    # Pagina atual e páginação
+    # Página e offset
     page = int(request.args.get('page', 1))
     per_page = 12
     offset = (page - 1) * per_page
 
-    # Buscar todos os perfis que satisfazem os filtros
+    # Executa consulta
     cursor.execute(query, params)
     all_profiles = cursor.fetchall()
     total = len(all_profiles)
 
-    # Embaralha aleatoriamente para cada requisição
-    random.shuffle(all_profiles)
-    perfis_paginados = all_profiles[offset:offset + per_page]
+    # Se não houver perfis, evita erro
+    if total == 0:
+        perfis_paginados = []
+        total_pages = 1
+    else:
+        # Gera uma chave de sessão com base nos filtros atuais
+        filtro_chave = f"{nome}_{modalidade}_{valor}_{approach_id}_{experiencia_id}_{publico_id}"
+        filtro_chave = filtro_chave.replace('None', '').replace(' ', '_')
 
-    total_pages = math.ceil(total / per_page)
+        session_key = f"perfil_ordem_{filtro_chave}"
+
+        if session_key not in session:
+            print("gerando nova ordem aleatória para sessão:", session_key)
+            id_list = [p['id'] for p in all_profiles]
+            random.shuffle(id_list)
+            session[session_key] = id_list
+        else:
+            print("usando ordem já existente da sessão:", session_key)
+            id_list = session[session_key]
+
+        # Ordena os perfis conforme a lista salva na sessão
+        id_to_profile = {p['id']: p for p in all_profiles}
+        ordered_profiles = [id_to_profile[i] for i in id_list if i in id_to_profile]
+
+        perfis_paginados = ordered_profiles[offset:offset + per_page]
+        total_pages = math.ceil(total / per_page)
 
     cursor.close()
     conn.close()

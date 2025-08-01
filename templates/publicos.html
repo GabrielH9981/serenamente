@@ -109,29 +109,33 @@
     </div>
 
     {% if total_pages > 1 %}
+    {% set args = request.args.to_dict() %}
+    {% set _ = args.pop('page', None) %}
     <nav aria-label="Navegação de página">
       <ul class="pagination justify-content-center mt-4">
-        {% if page > 1 %}
+
+        {% if current_page > 1 %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=page-1, **request.args.to_dict()) }}">Anterior</a>
+            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=current_page-1, **args) }}">Anterior</a>
           </li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Anterior</span></li>
         {% endif %}
 
         {% for p in range(1, total_pages + 1) %}
-          <li class="page-item {% if p == page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=p, **request.args.to_dict()) }}">{{ p }}</a>
+          <li class="page-item {% if p == current_page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=p, **args) }}">{{ p }}</a>
           </li>
         {% endfor %}
 
-        {% if page < total_pages %}
+        {% if current_page < total_pages %}
           <li class="page-item">
-            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=page+1, **request.args.to_dict()) }}">Próxima</a>
+            <a class="page-link" href="{{ url_for('psicologos.psicologos_publicos', page=current_page+1, **args) }}">Próxima</a>
           </li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Próxima</span></li>
         {% endif %}
+
       </ul>
     </nav>
     {% endif %}
