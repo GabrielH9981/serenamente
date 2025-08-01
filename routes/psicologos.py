@@ -1,5 +1,5 @@
 # routes/psicologos.py
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, session
 from db.db import get_db_connection
 from datetime import datetime, timedelta
 
@@ -79,27 +79,35 @@ def perfil_publico(profile_id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    viewer_ip = request.remote_addr
+    # --- CONTROLE DE VISUALIZAÇÕES COM SESSION ---
+    if 'views' not in session:
+        session['views'] = {}
 
-    # Verifica se já há visualização desse IP para esse perfil nas últimas 24h
-    cursor.execute("""
-        SELECT viewed_at FROM profile_views
-        WHERE profile_id = %s AND viewer_ip = %s
-        ORDER BY viewed_at DESC
-        LIMIT 1
-    """, (profile_id, viewer_ip))
+    now = datetime.utcnow()
+    last_view_str = session['views'].get(str(profile_id))
+    should_insert = False
 
-    last_view = cursor.fetchone()
-    now = datetime.utcnow()  # use direto agora
+    if not last_view_str:
+        should_insert = True
+    else:
+        try:
+            last_view = datetime.strptime(last_view_str, '%Y-%m-%d %H:%M:%S')
+            if now - last_view > timedelta(hours=24):
+                should_insert = True
+        except ValueError:
+            should_insert = True  # Em caso de erro na session, registra
 
-    if not last_view or (now - last_view['viewed_at']) > timedelta(hours=24):
+    if should_insert:
+        viewer_ip = request.remote_addr
         cursor.execute("""
             INSERT INTO profile_views (profile_id, viewer_ip)
             VALUES (%s, %s)
         """, (profile_id, viewer_ip))
         conn.commit()
+        session['views'][str(profile_id)] = now.strftime('%Y-%m-%d %H:%M:%S')
+        session.modified = True
 
-    # Consulta dos dados do perfil (como já está na sua rota)
+    # --- CONSULTA DE DADOS DO PERFIL ---
     cursor.execute("""
         SELECT p.*, u.name, u.crp
         FROM profiles p
