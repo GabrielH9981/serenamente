@@ -1,7 +1,7 @@
 # routes/psicologos.py
 from flask import Blueprint, render_template, request
 from db.db import get_db_connection
-import datetime
+from datetime import datetime, timedelta
 
 psicologos_bp = Blueprint('psicologos', __name__)
 
@@ -83,20 +83,20 @@ def perfil_publico(profile_id):
 
     # Verifica se já há visualização desse IP para esse perfil nas últimas 24h
     cursor.execute("""
-            SELECT viewed_at FROM profile_views
-            WHERE profile_id = %s AND viewer_ip = %s
-            ORDER BY viewed_at DESC
-            LIMIT 1
-        """, (profile_id, viewer_ip))
+        SELECT viewed_at FROM profile_views
+        WHERE profile_id = %s AND viewer_ip = %s
+        ORDER BY viewed_at DESC
+        LIMIT 1
+    """, (profile_id, viewer_ip))
 
     last_view = cursor.fetchone()
-    now = datetime.datetime.utcnow()
+    now = datetime.utcnow()  # use direto agora
 
-    if not last_view or (now - last_view['viewed_at']) > datetime.timedelta(hours=24):
+    if not last_view or (now - last_view['viewed_at']) > timedelta(hours=24):
         cursor.execute("""
-                INSERT INTO profile_views (profile_id, viewer_ip)
-                VALUES (%s, %s)
-            """, (profile_id, viewer_ip))
+            INSERT INTO profile_views (profile_id, viewer_ip)
+            VALUES (%s, %s)
+        """, (profile_id, viewer_ip))
         conn.commit()
 
     # Consulta dos dados do perfil (como já está na sua rota)
