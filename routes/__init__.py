@@ -1,4 +1,4 @@
-from .auth import auth_bp
+from .auth import auth_bp, init_oauth
 from .main import main_bp
 from .perfil import perfil_bp
 from .psicologos import psicologos_bp
@@ -6,7 +6,11 @@ from .ativacao import ativacao_bp
 from .admin import admin_bp
 
 
-def register_routes(app):
+def register_routes(app, oauth=None):
+    # passa o oauth para o módulo auth
+    if oauth is not None:
+        init_oauth(oauth)
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(perfil_bp)
