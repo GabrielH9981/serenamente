@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Completar cadastro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Fonte + Bootstrap -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+<div class="container d-flex align-items-center justify-content-center min-vh-100">
+    <div class="login-box" style="max-width: 500px; width:100%;">
+        <h2 class="mb-4 text-center">Completar cadastro</h2>
+
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        <p class="text-muted mb-3 text-center">
+            Só mais alguns dados obrigatórios para finalizar seu cadastro 😊
+        </p>
+
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Nome completo</label>
+                <input type="text" class="form-control" name="name"
+                       value="{{ user.name or '' }}" placeholder="Seu nome"
+                       required>
+                <small class="text-muted">Você pode ajustar o nome vindo da conta Google se quiser.</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">CRP</label>
+                <input id="crp" type="text" class="form-control" name="crp"
+                       value="{{ user.crp or '' }}" required>
+                <small class="text-muted">Formato: 12/34567 ou 12/345678</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">CPF</label>
+                <input id="cpf" type="text" class="form-control" name="cpf"
+                       value="{{ user.cpf or '' }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">WhatsApp</label>
+                <input id="whatsapp" type="text" class="form-control" name="whatsapp"
+                       value="{{ user.whatsapp_number or '' }}" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-2">
+                Finalizar cadastro
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function somenteNumeros(str) {
+        return str.replace(/\D/g, '');
+    }
+
+    function mascaraCPF(valor) {
+        let v = somenteNumeros(valor).slice(0, 11); // máx 11 dígitos
+        if (v.length > 9) {
+            v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        } else if (v.length > 6) {
+            v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        } else if (v.length > 3) {
+            v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+        }
+        return v;
+    }
+
+    function mascaraWhatsapp(valor) {
+        let v = somenteNumeros(valor).slice(0, 11); // DDD + 9 dígitos
+        if (v.length > 6) {
+            v = v.replace(/(\d{2})(\d{5})(\d{1,4})/, '($1) $2-$3');
+        } else if (v.length > 2) {
+            v = v.replace(/(\d{2})(\d{1,5})/, '($1) $2');
+        } else if (v.length > 0) {
+            v = v.replace(/(\d{1,2})/, '($1');
+        }
+        return v;
+    }
+
+    // CRP: 2 dígitos / 5 ou 6 dígitos
+    function mascaraCRP(valor) {
+        let v = somenteNumeros(valor).slice(0, 8); // 2 + 6 = 8 máx
+        if (v.length > 2) {
+            v = v.replace(/(\d{2})(\d{1,6})/, '$1/$2');
+        }
+        return v;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const cpfInput = document.getElementById('cpf');
+        const whatsappInput = document.getElementById('whatsapp');
+        const crpInput = document.getElementById('crp');
+
+        if (cpfInput) {
+            cpfInput.addEventListener('input', function (e) {
+                const pos = cpfInput.selectionStart;
+                cpfInput.value = mascaraCPF(e.target.value);
+                cpfInput.selectionStart = cpfInput.selectionEnd = cpfInput.value.length;
+            });
+        }
+
+        if (whatsappInput) {
+            whatsappInput.addEventListener('input', function (e) {
+                whatsappInput.value = mascaraWhatsapp(e.target.value);
+                whatsappInput.selectionStart = whatsappInput.selectionEnd = whatsappInput.value.length;
+            });
+        }
+
+        if (crpInput) {
+            crpInput.addEventListener('input', function (e) {
+                crpInput.value = mascaraCRP(e.target.value);
+                crpInput.selectionStart = crpInput.selectionEnd = crpInput.value.length;
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

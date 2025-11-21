@@ -21,7 +21,6 @@
 
         <form method="POST" enctype="multipart/form-data">
 
-
         <div class="row mb-4 align-items-start">
           <div class="col-md-8">
             <div class="mb-3">
@@ -36,7 +35,7 @@
             </div>
           </div>
 
-        <div class="col-md-4 text-center">
+          <div class="col-md-4 text-center">
             <div id="finalPreviewContainer" class="d-flex flex-column align-items-center text-center">
               <img id="finalPreview"
                    class="profile-picture-preview mb-2"
@@ -66,125 +65,227 @@
                 </div>
               {% endif %}
             </div>
+          </div>
         </div>
 
-            <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title">Ajustar Imagem</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                  </div>
-                  <div class="modal-body">
-                    <img id="imagePreview" style="max-width: 100%;">
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" id="cropConfirmBtn" class="btn btn-success" data-bs-dismiss="modal">Confirmar corte</button>
-                  </div>
-                </div>
+        <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Ajustar Imagem</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body">
+                <img id="imagePreview" style="max-width: 100%;">
+              </div>
+              <div class="modal-footer">
+                <button type="button" id="cropConfirmBtn" class="btn btn-success" data-bs-dismiss="modal">Confirmar corte</button>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div class="mb-3">
-                <label class="form-label">Mini bio</label>
-                <input type="text" name="short_bio" class="form-control" value="{{ profile.short_bio or '' }}">
+        <div class="mb-3">
+            <label class="form-label">Mini bio</label>
+            <input type="text" name="short_bio" class="form-control" value="{{ profile.short_bio or '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Biografia Completa</label>
+            <textarea name="full_bio" class="form-control" rows="5">{{ profile.full_bio or '' }}</textarea>
+        </div>
+
+        <!-- Website + Valor da Sessão -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Valor da Sessão</label>
+                <select name="price_range" class="form-select">
+                    <option value="">Selecione</option>
+                    <option value="50"  {% if profile.price_range == '50' %}selected{% endif %}>R$ 50</option>
+                    <option value="70"  {% if profile.price_range == '70' %}selected{% endif %}>R$ 70</option>
+                    <option value="90"  {% if profile.price_range == '90' %}selected{% endif %}>R$ 90</option>
+                </select>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Descrição completa</label>
-                <textarea name="full_bio" class="form-control" rows="5">{{ profile.full_bio or '' }}</textarea>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Localização</label>
-                <input type="text" name="location" class="form-control" value="{{ profile.location or '' }}">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Faixa de Preço (ex: 100-200)</label>
-                <input type="text" name="price_range" class="form-control" value="{{ profile.price_range or '' }}">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Modalidades de atendimento</label><br>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" name="atendimento_online" value="1" {% if profile.atendimento_online %}checked{% endif %}>
-                    <label class="form-check-label">Online</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" name="atendimento_presencial" value="1" {% if profile.atendimento_presencial %}checked{% endif %}>
-                    <label class="form-check-label">Presencial</label>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">WhatsApp</label>
-                <input type="text" name="whatsapp_number" class="form-control" value="{{ profile.whatsapp_number or '' }}">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Instagram</label>
-                <input type="text" name="instagram_url" class="form-control" value="{{ profile.instagram_url or '' }}">
-            </div>
-
-            <div class="mb-3">
+            <div class="col-md-6 mb-3">
                 <label class="form-label">Website</label>
-                <input type="text" name="website_url" class="form-control" value="{{ profile.website_url or '' }}">
+                <input type="text" name="website_url" class="form-control"
+                       value="{{ profile.website_url or '' }}">
+            </div>
+        </div>
+
+        <!-- Instagram + WhatsApp -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Instagram</label>
+                <input type="text" name="instagram_url" class="form-control"
+                       value="{{ profile.instagram_url or '' }}">
             </div>
 
-            <div class="form-section">
-                <h4 class="mt-4">Especialidades e Abordagens</h4>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">WhatsApp</label>
+                <input type="text" name="whatsapp_number" class="form-control"
+                       value="{{ profile.whatsapp_number or '' }}">
+            </div>
+        </div>
 
-                <div class="mb-4">
-                    <label class="form-label">Abordagem Terapêutica</label>
-                    <select name="approach" class="form-select">
+        <!-- Modalidades + Localização -->
+        <div class="row">
+            <!-- Modalidades -->
+            <div class="col-md-6 mb-3">
+                <label class="form-label d-block">Modalidades de Atendimento</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="atendimentoOnline" name="atendimento_online"
+                           value="1" {% if profile.atendimento_online %}checked{% endif %}>
+                    <label class="form-check-label" for="atendimentoOnline">Online</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="atendimentoPresencial" name="atendimento_presencial"
+                           value="1" {% if profile.atendimento_presencial %}checked{% endif %}>
+                    <label class="form-check-label" for="atendimentoPresencial">Presencial</label>
+                </div>
+            </div>
+
+            <!-- ONLINE: Estado (ao lado das modalidades) -->
+            <div class="col-md-6 mb-3">
+                <div id="onlineFields" class="d-none">
+                    <label class="form-label">Estado (atendimento online)</label>
+                    <select id="estadoOnline" name="online_estado" class="form-select">
                         <option value="">Selecione</option>
-                        {% for a in approaches %}
-                            <option value="{{ a.id }}" {% if a.id in selected_approaches %}selected{% endif %}>{{ a.name }}</option>
+                        {% for uf, nome in [
+                            ('AC','Acre'),('AL','Alagoas'),('AP','Amapá'),('AM','Amazonas'),
+                            ('BA','Bahia'),('CE','Ceará'),('DF','Distrito Federal'),
+                            ('ES','Espírito Santo'),('GO','Goiás'),('MA','Maranhão'),
+                            ('MT','Mato Grosso'),('MS','Mato Grosso do Sul'),('MG','Minas Gerais'),
+                            ('PA','Pará'),('PB','Paraíba'),('PR','Paraná'),('PE','Pernambuco'),
+                            ('PI','Piauí'),('RJ','Rio de Janeiro'),('RN','Rio Grande do Norte'),
+                            ('RS','Rio Grande do Sul'),('RO','Rondônia'),('RR','Roraima'),
+                            ('SC','Santa Catarina'),('SP','São Paulo'),('SE','Sergipe'),('TO','Tocantins')
+                        ] %}
+                            <option value="{{ uf }}" {% if profile.online_estado == uf %}selected{% endif %}>
+                                {{ nome }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+        </div>
 
-                <div class="mb-4">
-                    <label class="form-label">Experiências / Assuntos Dominados</label>
-                    <div class="row">
-                        {% for e in experiencias %}
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="experiencias" value="{{ e.id }}" {% if e.id in selected_experiencias %}checked{% endif %}>
-                                    <label class="form-check-label">{{ e.nome }}</label>
-                                </div>
-                            </div>
-                        {% endfor %}
+        <!-- PRESENCIAL: CEP, Cidade, Estado, Rua, Número (OCUPA A LINHA TODA) -->
+        <div class="row">
+            <div class="col-12 mb-3">
+                <div id="presencialFields" class="d-none">
+                    <label class="form-label">Endereço para atendimento presencial</label>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">CEP</label>
+                        <input type="text" id="cepPresencial" name="pres_cep"
+                               class="form-control" placeholder="00000-000"
+                               value="{{ profile.pres_cep or '' }}">
                     </div>
-                </div>
 
-                <div class="mb-4">
-                    <label class="form-label">Público-Alvo</label>
-                    <div class="row">
-                        {% for p in publicos %}
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="publicos" value="{{ p.id }}" {% if p.id in selected_publicos %}checked{% endif %}>
-                                    <label class="form-check-label">{{ p.nome }}</label>
-                                </div>
-                            </div>
-                        {% endfor %}
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Cidade</label>
+                        <input type="text" id="cidadePresencial" name="pres_cidade"
+                               class="form-control" placeholder="Cidade"
+                               value="{{ profile.pres_cidade or '' }}">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Estado</label>
+                        <select id="estadoPresencial" name="pres_estado" class="form-select">
+                            <option value="">Selecione</option>
+                            {% for uf, nome in [
+                                ('AC','Acre'),('AL','Alagoas'),('AP','Amapá'),('AM','Amazonas'),
+                                ('BA','Bahia'),('CE','Ceará'),('DF','Distrito Federal'),
+                                ('ES','Espírito Santo'),('GO','Goiás'),('MA','Maranhão'),
+                                ('MT','Mato Grosso'),('MS','Mato Grosso do Sul'),('MG','Minas Gerais'),
+                                ('PA','Pará'),('PB','Paraíba'),('PR','Paraná'),('PE','Pernambuco'),
+                                ('PI','Piauí'),('RJ','Rio de Janeiro'),('RN','Rio Grande do Norte'),
+                                ('RS','Rio Grande do Sul'),('RO','Rondônia'),('RR','Roraima'),
+                                ('SC','Santa Catarina'),('SP','São Paulo'),('SE','Sergipe'),('TO','Tocantins')
+                            ] %}
+                                <option value="{{ uf }}" {% if profile.pres_estado == uf %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Rua</label>
+                        <input type="text" id="ruaPresencial" name="pres_rua"
+                               class="form-control" placeholder="Rua exemplo"
+                               value="{{ profile.pres_rua or '' }}">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Número</label>
+                        <input type="text" id="numeroPresencial" name="pres_numero"
+                               class="form-control" placeholder="123"
+                               value="{{ profile.pres_numero or '' }}">
                     </div>
                 </div>
             </div>
+        </div>
 
-            <button type="submit" class="btn btn-success">Salvar</button>
+
+        <!-- campo escondido que será enviado para o backend -->
+        <input type="hidden" name="location" id="locationInput" value="{{ profile.location or '' }}">
+
+        <div class="form-section">
+            <h4 class="mt-4">Especialidades e Abordagens</h4>
+
+            <div class="mb-4">
+                <label class="form-label">Abordagem Terapêutica</label>
+                <select name="approach" class="form-select">
+                    <option value="">Selecione</option>
+                    {% for a in approaches %}
+                        <option value="{{ a.id }}" {% if a.id in selected_approaches %}selected{% endif %}>{{ a.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Experiências / Assuntos Dominados</label>
+                <div class="row">
+                    {% for e in experiencias %}
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="experiencias" value="{{ e.id }}" {% if e.id in selected_experiencias %}checked{% endif %}>
+                                <label class="form-check-label">{{ e.nome }}</label>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Público-Alvo</label>
+                <div class="row">
+                    {% for p in publicos %}
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="publicos" value="{{ p.id }}" {% if p.id in selected_publicos %}checked{% endif %}>
+                                <label class="form-check-label">{{ p.nome }}</label>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">Salvar</button>
         </form>
     </div>
 
     <script>
+      // --- Cropper (sua lógica original) ---
       let cropper;
       const inputImage = document.getElementById('inputImage');
       const imagePreview = document.getElementById('imagePreview');
       const croppedInput = document.getElementById('croppedImageInput');
       const finalPreview = document.getElementById('finalPreview');
-      const finalPreviewContainer = document.getElementById('finalPreviewContainer');
       const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
 
       inputImage.addEventListener('change', function (e) {
@@ -196,19 +297,17 @@
           imagePreview.src = event.target.result;
 
           imagePreview.onload = function () {
-          cropperModal.show();
+            cropperModal.show();
 
-          // Aguarda o modal renderizar antes de iniciar o cropper
-          setTimeout(() => {
-            if (cropper) cropper.destroy();
-            cropper = new Cropper(imagePreview, {
-              aspectRatio: 1,
-              viewMode: 1,
-              autoCropArea: 1
-            });
-          }, 200); // Pequeno atraso para garantir que o DOM esteja 100%
-        };
-
+            setTimeout(() => {
+              if (cropper) cropper.destroy();
+              cropper = new Cropper(imagePreview, {
+                aspectRatio: 1,
+                viewMode: 1,
+                autoCropArea: 1
+              });
+            }, 200);
+          };
         };
         reader.readAsDataURL(file);
       });
@@ -221,12 +320,77 @@
         finalPreview.style.display = 'block';
         document.getElementById('previewLabel').style.display = 'block';
 
-        // Oculta a imagem e o texto antigos
         const originalPic = document.getElementById('originalProfilePic');
         const originalText = document.getElementById('originalText');
         if (originalPic) originalPic.style.display = 'none';
         if (originalText) originalText.style.display = 'none';
       });
+
+    // --- Lógica de localização (online / presencial + ViaCEP) ---
+    document.addEventListener('DOMContentLoaded', function () {
+      const chkOnline = document.getElementById('atendimentoOnline');
+      const chkPresencial = document.getElementById('atendimentoPresencial');
+      const onlineFields = document.getElementById('onlineFields');
+      const presencialFields = document.getElementById('presencialFields');
+
+      const cepPresencial = document.getElementById('cepPresencial');
+      const cidadePresencial = document.getElementById('cidadePresencial');
+      const estadoPresencial = document.getElementById('estadoPresencial');
+      const ruaPresencial = document.getElementById('ruaPresencial');
+
+      function updateLocationFields() {
+        // Online-only: mostra estado online
+        if (chkOnline.checked && !chkPresencial.checked) {
+          onlineFields.classList.remove('d-none');
+        } else {
+          onlineFields.classList.add('d-none');
+        }
+
+        // Presencial: mostra bloco de endereço
+        if (chkPresencial.checked) {
+          presencialFields.classList.remove('d-none');
+        } else {
+          presencialFields.classList.add('d-none');
+        }
+      }
+
+      chkOnline.addEventListener('change', updateLocationFields);
+      chkPresencial.addEventListener('change', updateLocationFields);
+
+      // ao carregar, aplica de acordo com o que já está salvo
+      updateLocationFields();
+
+      // Máscara simples de CEP + ViaCEP
+      if (cepPresencial) {
+        cepPresencial.addEventListener('input', function () {
+          let v = cepPresencial.value.replace(/\D/g, '');
+          if (v.length > 8) v = v.slice(0, 8);
+          if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+          cepPresencial.value = v;
+        });
+
+        cepPresencial.addEventListener('blur', function () {
+          const cepNum = cepPresencial.value.replace(/\D/g, '');
+          if (cepNum.length !== 8) return;
+
+          fetch(`https://viacep.com.br/ws/${cepNum}/json/`)
+            .then(resp => resp.json())
+            .then(data => {
+              if (data.erro) return;
+              if (data.logradouro && ruaPresencial.value.trim() === '') {
+                ruaPresencial.value = data.logradouro;
+              }
+              if (data.localidade && cidadePresencial.value.trim() === '') {
+                cidadePresencial.value = data.localidade;
+              }
+              if (data.uf && !estadoPresencial.value) {
+                estadoPresencial.value = data.uf;
+              }
+            })
+            .catch(err => console.log('Erro ao consultar ViaCEP', err));
+        });
+      }
+    });
     </script>
 </body>
 </html>

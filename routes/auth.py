@@ -3,6 +3,11 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import generate_password_hash, check_password_hash
 from db.db import get_db_connection
 import secrets  # <-- novo
+from utils.validators import validar_cpf
+import random
+import datetime
+from utils.email_utils import send_verification_email
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -12,6 +17,48 @@ oauth = None
 def init_oauth(oauth_obj):
     global oauth
     oauth = oauth_obj
+
+
+@auth_bp.before_app_request
+def verificar_dados_obrigatorios():
+    rotas_livres = {
+        'auth.login',
+        'auth.register',
+        'auth.login_google',
+        'auth.auth_google_callback',
+        'auth.completar_cadastro',
+        'auth.verificar_email',        # ✅ nova
+        'auth.enviar_codigo_email',    # ✅ nova
+        'auth.alterar_email',
+        'static'
+    }
+
+    endpoint = request.endpoint
+
+    if endpoint in rotas_livres or 'user_id' not in session:
+        return
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT crp, cpf, whatsapp_number, email_verified
+        FROM users WHERE id = %s
+    """, (session['user_id'],))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not user:
+        return redirect(url_for('auth.login'))
+
+    # 1º: dados obrigatórios de profissional
+    if not user.get('crp') or not user.get('cpf') or not user.get('whatsapp_number'):
+        return redirect(url_for('auth.completar_cadastro'))
+
+    # 2º: e-mail verificado
+    if not user.get('email_verified'):
+        return redirect(url_for('auth.verificar_email'))
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -45,6 +92,18 @@ def register():
         cpf = request.form['cpf']
         whatsapp = request.form['whatsapp']
         senha = generate_password_hash(request.form['senha'])
+
+        # ✅ valida CPF
+        if not validar_cpf(cpf):
+            return render_template(
+                'register.html',
+                error='CPF inválido.',
+                name=name,
+                email=email,
+                crp=crp,
+                cpf=cpf,
+                whatsapp=whatsapp
+            )
 
         try:
             conn = get_db_connection()
@@ -93,7 +152,6 @@ def login_google():
 @auth_bp.route('/auth/google/callback')
 def auth_google_callback():
     if oauth is None:
-        # Só por segurança, se algo não tiver sido inicializado
         return redirect(url_for('auth.login'))
 
     token = oauth.google.authorize_access_token()
@@ -108,7 +166,6 @@ def auth_google_callback():
     if not email:
         return render_template('login.html', error='Não foi possível obter o e-mail da conta Google.')
 
-    # Conecta no banco
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -118,24 +175,30 @@ def auth_google_callback():
         user = cursor.fetchone()
 
         if not user:
-            # Cria um usuário novo com senha aleatória (não será usada no login normal)
+            from werkzeug.security import generate_password_hash
+            import secrets
+
             senha_fake = generate_password_hash(secrets.token_hex(16))
 
             cursor.execute("""
-                INSERT INTO users (name, email, password_hash, crp, cpf, whatsapp_number, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, 0)
+                INSERT INTO users (name, email, password_hash, crp, cpf, whatsapp_number, is_active, email_verified)
+                VALUES (%s, %s, %s, %s, %s, %s, 0, 1)
             """, (name, email, senha_fake, '', '', ''))
             conn.commit()
 
-            # pega o usuário recém criado
             user_id = cursor.lastrowid
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
 
-        # Faz login "manual" igual sua rota /login
+        # seta sessão
         session['user_id'] = user['id']
         session['user_name'] = user['name']
 
+        # se faltar dado obrigatório, manda pra completar cadastro
+        if not user.get('crp') or not user.get('cpf') or not user.get('whatsapp_number'):
+            return redirect(url_for('auth.completar_cadastro'))
+
+        # se já tiver tudo, vai pro dashboard normal
         return redirect(url_for('main.dashboard'))
 
     except Exception as e:
@@ -145,4 +208,231 @@ def auth_google_callback():
     finally:
         cursor.close()
         conn.close()
+
+@auth_bp.route('/completar-cadastro', methods=['GET', 'POST'])
+def completar_cadastro():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        if request.method == 'POST':
+            name = request.form.get('name')
+            crp = request.form.get('crp')
+            cpf = request.form.get('cpf')
+            whatsapp = request.form.get('whatsapp')
+
+            # campos obrigatórios
+            if not crp or not cpf or not whatsapp:
+                cursor.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+                user = cursor.fetchone()
+                return render_template(
+                    'completar_cadastro.html',
+                    user=user,
+                    error='Preencha todos os campos obrigatórios.'
+                )
+
+            # ✅ valida CPF
+            if not validar_cpf(cpf):
+                cursor.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+                user = cursor.fetchone()
+                return render_template(
+                    'completar_cadastro.html',
+                    user=user,
+                    error='CPF inválido.'
+                )
+
+            cursor.execute("""
+                UPDATE users
+                SET name = %s, crp = %s, cpf = %s, whatsapp_number = %s
+                WHERE id = %s
+            """, (name, crp, cpf, whatsapp, session['user_id']))
+            conn.commit()
+
+            session['user_name'] = name
+            return redirect(url_for('main.dashboard'))
+
+        # GET: carregar dados atuais do usuário pra preencher o form
+        cursor.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+        user = cursor.fetchone()
+
+        if not user:
+            return redirect(url_for('auth.login'))
+
+        return render_template('completar_cadastro.html', user=user)
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@auth_bp.route('/enviar-codigo-email')
+def enviar_codigo_email():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT email FROM users WHERE id = %s", (session['user_id'],))
+        user = cursor.fetchone()
+
+        if not user:
+            return redirect(url_for('auth.login'))
+
+        email = user['email']
+
+        # gera código de 6 dígitos
+        code = f"{random.randint(0, 999999):06d}"
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+
+        cursor.execute("""
+            UPDATE users
+            SET email_verification_code = %s,
+                email_verification_expires_at = %s
+            WHERE id = %s
+        """, (code, expires_at, session['user_id']))
+        conn.commit()
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    # envia e-mail (fora do try/finally pra não segurar conexão à toa)
+    send_verification_email(email, code)
+
+    # volta pra tela de verificação (agora com codigo_enviado = True)
+    return redirect(url_for('auth.verificar_email'))
+
+
+@auth_bp.route('/verificar-email', methods=['GET', 'POST'])
+def verificar_email():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        codigo = request.form.get('codigo', '').strip()
+
+        cursor.execute("""
+            SELECT email, email_verification_code, email_verification_expires_at
+            FROM users WHERE id = %s
+        """, (session['user_id'],))
+        user = cursor.fetchone()
+
+        codigo_enviado = bool(user and user.get('email_verification_code'))
+        email = user['email'] if user else None
+
+        if (not user or
+                not user['email_verification_code'] or
+                not user['email_verification_expires_at'] or
+                codigo != user['email_verification_code'] or
+                user['email_verification_expires_at'] < datetime.datetime.utcnow()):
+            cursor.close()
+            conn.close()
+            return render_template(
+                'verificar_email.html',
+                email=email,
+                codigo_enviado=codigo_enviado,
+                error='Código inválido ou expirado.'
+            )
+
+        # marca como verificado
+        cursor.execute("""
+            UPDATE users
+            SET email_verified = 1,
+                email_verification_code = NULL,
+                email_verification_expires_at = NULL
+            WHERE id = %s
+        """, (session['user_id'],))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+        return redirect(url_for('main.dashboard'))
+
+    # GET: decidir se já existe código ou não
+    cursor.execute("""
+        SELECT email, email_verification_code
+        FROM users WHERE id = %s
+    """, (session['user_id'],))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    email = user['email'] if user else None
+    codigo_enviado = bool(user and user.get('email_verification_code'))
+
+    return render_template('verificar_email.html', email=email, codigo_enviado=codigo_enviado)
+
+
+@auth_bp.route('/alterar-email', methods=['GET', 'POST'])
+def alterar_email():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        novo_email = request.form.get('email', '').strip()
+
+        if not novo_email:
+            cursor.execute("SELECT email FROM users WHERE id = %s", (session['user_id'],))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            return render_template(
+                'alterar_email.html',
+                email=user['email'] if user else '',
+                error='Informe um e-mail válido.'
+            )
+
+        # checar se já existe outro usuário com esse e-mail
+        cursor.execute(
+            "SELECT id FROM users WHERE email = %s AND id <> %s",
+            (novo_email, session['user_id'])
+        )
+        ja_existe = cursor.fetchone()
+        if ja_existe:
+            cursor.execute("SELECT email FROM users WHERE id = %s", (session['user_id'],))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            return render_template(
+                'alterar_email.html',
+                email=user['email'] if user else '',
+                error='Já existe uma conta com esse e-mail.'
+            )
+
+        # atualiza email e reseta verificação
+        cursor.execute("""
+            UPDATE users
+            SET email = %s,
+                email_verified = 0,
+                email_verification_code = NULL,
+                email_verification_expires_at = NULL
+            WHERE id = %s
+        """, (novo_email, session['user_id']))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        # depois que alterar, manda pra tela de verificar e-mail (estado "enviar código")
+        return redirect(url_for('auth.verificar_email'))
+
+    # GET: mostrar o formulário com o e-mail atual
+    cursor.execute("SELECT email FROM users WHERE id = %s", (session['user_id'],))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    return render_template('alterar_email.html', email=user['email'] if user else '')
+
 
