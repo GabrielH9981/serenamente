@@ -39,13 +39,73 @@
                     <p class="text-muted">CRP: {{ profile.crp }}</p>
                 {% endif %}
 
-                <p class="mb-1"><strong><i class="bi bi-geo-alt-fill me-2"></i>Localização:</strong> {{ profile.location or "Não informada" }}</p>
-                <p class="mb-1"><strong><i class="bi bi-globe2 me-2"></i>Atendimento:</strong>
-                    {% if profile.atendimento_online %}Online{% endif %}
-                    {% if profile.atendimento_online and profile.atendimento_presencial %} / {% endif %}
-                    {% if profile.atendimento_presencial %}Presencial{% endif %}
+                <p class="mb-1"><strong><i class="bi bi-currency-dollar me-2"></i>Valor da Sessão:</strong> {{ profile.price_range or "Não informada" }}</p>
+
+                {# flags pra facilitar a leitura #}
+                {% set tem_presencial = profile.atendimento_presencial %}
+                {% set tem_online = profile.atendimento_online %}
+
+                {# LOCALIZAÇÃO BONITA #}
+                {% if tem_presencial and profile.pres_cidade and profile.pres_estado %}
+                    <p class="mb-1">
+                        <strong><i class="bi bi-geo-alt-fill me-2"></i>Localização:</strong>
+                        Atendimento presencial em {{ profile.pres_cidade }} - {{ profile.pres_estado }}
+                    </p>
+
+                    {% if profile.pres_rua or profile.pres_cep %}
+                        <p class="text-muted mb-1 ms-4">
+                            {# Rua e número #}
+                            {% if profile.pres_rua %}
+                                {{ profile.pres_rua }}
+                                {% if profile.pres_numero %}, {{ profile.pres_numero }}{% endif %}
+                            {% endif %}
+                            {# CEP #}
+                            {% if profile.pres_cep %}
+                                {% if profile.pres_rua %} · {% endif %}
+                                CEP {{ profile.pres_cep }}
+                            {% endif %}
+                        </p>
+                    {% endif %}
+
+                    {# Link para o Google Maps #}
+                    {% set mapa_query = (
+                        (profile.pres_rua or '') ~ ' ' ~
+                        (profile.pres_numero or '') ~ ' ' ~
+                        (profile.pres_cidade or '') ~ ' ' ~
+                        (profile.pres_estado or '')
+                    )|replace(' ', '+') %}
+                    <p class="mb-2 ms-4">
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ mapa_query }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-geo-alt me-1"></i> Ver no Google Maps
+                        </a>
+                    </p>
+
+                {% elif tem_online and profile.online_estado %}
+                    <p class="mb-1">
+                        <strong><i class="bi bi-geo-alt-fill me-2"></i>Localização:</strong>
+                        Atendimento online em {{ profile.online_estado }}
+                    </p>
+
+                {% else %}
+                    <p class="mb-1">
+                        <strong><i class="bi bi-geo-alt-fill me-2"></i>Localização:</strong>
+                        {{ profile.location or "Não informada" }}
+                    </p>
+                {% endif %}
+
+                {# TIPO DE ATENDIMENTO (mantém aquela info que você já tinha) #}
+                <p class="mb-1">
+                    <strong><i class="bi bi-globe2 me-2"></i>Atendimento:</strong>
+                    {% if tem_online %}Online{% endif %}
+                    {% if tem_online and tem_presencial %} / {% endif %}
+                    {% if tem_presencial %}Presencial{% endif %}
                 </p>
-                <p class="mb-1"><strong><i class="bi bi-currency-dollar me-2"></i>Faixa de preço:</strong> {{ profile.price_range or "Não informada" }}</p>
+
+
+
+
 
                 {% if profile.short_bio %}
                     <h4 class="section-title"><i class="bi bi-person-lines-fill me-2"></i>Apresentação</h4>
@@ -80,18 +140,49 @@
 
                 <h4 class="section-title"><i class="bi bi-telephone me-2"></i>Contato</h4>
                 <div class="d-flex flex-wrap gap-2">
+
+                    {# WhatsApp: remove máscara e adiciona DDI 55 #}
                     {% if profile.whatsapp_number %}
-                        <a href="https://wa.me/{{ profile.whatsapp_number|replace('+','') }}" class="btn btn-success" target="_blank">
+                        {% set wa = profile.whatsapp_number
+                            |replace(' ', '')
+                            |replace('(', '')
+                            |replace(')', '')
+                            |replace('-', '')
+                            |replace('+', '') %}
+                        <a href="https://wa.me/55{{ wa }}" class="btn btn-success" target="_blank">
                             <i class="bi bi-whatsapp me-1"></i> WhatsApp
                         </a>
                     {% endif %}
+
+                    {# Instagram: já vem como URL completa do backend #}
                     {% if profile.instagram_url %}
-                        <a href="https://www.instagram.com/{{ profile.instagram_url }}" class="btn btn-outline-danger" target="_blank">
+                        <a href="{{ profile.instagram_url }}" class="btn btn-outline-danger" target="_blank">
                             <i class="bi bi-instagram me-1"></i> Instagram
                         </a>
                     {% endif %}
+
+                    {# LinkedIn: nova coluna linkedin_url #}
+                    {% if profile.linkedin_url %}
+                        <a href="{{ profile.linkedin_url }}" class="btn btn-outline-primary" target="_blank">
+                            <i class="bi bi-linkedin me-1"></i> LinkedIn
+                        </a>
+                    {% endif %}
+
+                    {# TikTok: nova coluna tiktok_url #}
+                    {% if profile.tiktok_url %}
+                        <a href="{{ profile.tiktok_url }}" class="btn btn-outline-dark" target="_blank">
+                            <i class="bi bi-tiktok me-1"></i> TikTok
+                        </a>
+                    {% endif %}
+
+                    {# Website: se não tiver protocolo, coloca https:// #}
                     {% if profile.website_url %}
-                        <a href="https://{{ profile.website_url }}" class="btn btn-outline-primary" target="_blank">
+                        {% if profile.website_url.startswith('http') %}
+                            {% set site = profile.website_url %}
+                        {% else %}
+                            {% set site = 'https://' ~ profile.website_url %}
+                        {% endif %}
+                        <a href="{{ site }}" class="btn btn-outline-secondary" target="_blank">
                             <i class="bi bi-link-45deg me-1"></i> Website
                         </a>
                     {% endif %}

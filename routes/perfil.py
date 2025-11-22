@@ -89,6 +89,38 @@ def perfil():
             # só online: mostra só o estado
             location = online_estado
 
+        # novos campos sociais
+        whatsapp_number = request.form.get('whatsapp_number')
+
+        instagram_handle = (request.form.get('instagram_handle') or '').strip()
+        linkedin_handle = (request.form.get('linkedin_handle') or '').strip()
+        tiktok_handle = (request.form.get('tiktok_handle') or '').strip()
+
+        def build_url(base, handle, strip_at=False):
+            if not handle:
+                return ''
+            h = handle.strip()
+            if strip_at and h.startswith('@'):
+                h = h[1:]
+            h = h.lstrip('/').strip()
+            return base + h
+
+        instagram_url = build_url("https://instagram.com/", instagram_handle, strip_at=True)
+        linkedin_url = build_url("https://linkedin.com/in/", linkedin_handle)
+        tiktok_url = build_url("https://tiktok.com/@", tiktok_handle, strip_at=True)
+
+        atendimento_online = 1 if request.form.get('atendimento_online') else 0
+        atendimento_presencial = 1 if request.form.get('atendimento_presencial') else 0
+
+        # (online_estado e pres_* você já pega aí em cima, mantem igual)
+
+        # monta o location bonitinho (como já fizemos antes)
+        location = ''
+        if atendimento_presencial and pres_cep and pres_cidade and pres_rua and pres_numero and pres_estado:
+            location = f"{pres_cep} - {pres_rua}, {pres_numero} - {pres_cidade.upper()} - {pres_estado}"
+        elif atendimento_online and not atendimento_presencial and online_estado:
+            location = online_estado
+
         data = {
             'short_bio': request.form.get('short_bio'),
             'full_bio': request.form.get('full_bio'),
@@ -97,8 +129,8 @@ def perfil():
             'price_range': request.form.get('price_range'),
             'atendimento_online': atendimento_online,
             'atendimento_presencial': atendimento_presencial,
-            'whatsapp_number': request.form.get('whatsapp_number'),
-            'instagram_url': request.form.get('instagram_url'),
+            'whatsapp_number': whatsapp_number,
+            'instagram_url': instagram_url,
             'website_url': request.form.get('website_url'),
             'online_estado': online_estado,
             'pres_cep': pres_cep,
@@ -106,6 +138,8 @@ def perfil():
             'pres_estado': pres_estado,
             'pres_rua': pres_rua,
             'pres_numero': pres_numero,
+            'linkedin_url': linkedin_url,
+            'tiktok_url': tiktok_url,
         }
 
         if profile:
@@ -126,7 +160,9 @@ def perfil():
                     pres_cidade=%s,
                     pres_estado=%s,
                     pres_rua=%s,
-                    pres_numero=%s
+                    pres_numero=%s,
+                    linkedin_url=%s,
+                    tiktok_url=%s
                 WHERE user_id=%s
             """, (
                 data['short_bio'], data['full_bio'], data['profile_picture_url'], data['location'],
@@ -134,24 +170,30 @@ def perfil():
                 data['whatsapp_number'], data['instagram_url'], data['website_url'],
                 data['online_estado'], data['pres_cep'], data['pres_cidade'],
                 data['pres_estado'], data['pres_rua'], data['pres_numero'],
+                data['linkedin_url'], data['tiktok_url'],
                 session['user_id']
             ))
+
+
         else:
             cursor.execute("""
                 INSERT INTO profiles (
                     user_id, short_bio, full_bio, profile_picture_url, location,
                     price_range, atendimento_online, atendimento_presencial,
                     whatsapp_number, instagram_url, website_url,
-                    online_estado, pres_cep, pres_cidade, pres_estado, pres_rua, pres_numero
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    online_estado, pres_cep, pres_cidade, pres_estado, pres_rua, pres_numero,
+                    linkedin_url, tiktok_url
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 session['user_id'], data['short_bio'], data['full_bio'], data['profile_picture_url'],
                 data['location'], data['price_range'], data['atendimento_online'],
                 data['atendimento_presencial'], data['whatsapp_number'],
                 data['instagram_url'], data['website_url'],
                 data['online_estado'], data['pres_cep'], data['pres_cidade'],
-                data['pres_estado'], data['pres_rua'], data['pres_numero']
+                data['pres_estado'], data['pres_rua'], data['pres_numero'],
+                data['linkedin_url'], data['tiktok_url']
             ))
+
             conn.commit()
             cursor.execute("SELECT * FROM profiles WHERE user_id = %s", (session['user_id'],))
             profile = cursor.fetchone()

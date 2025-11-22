@@ -118,16 +118,76 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">Instagram</label>
-                <input type="text" name="instagram_url" class="form-control"
-                       value="{{ profile.instagram_url or '' }}">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-instagram me-1"></i> instagram.com/
+                    </span>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="instagramHandle"
+                        name="instagram_handle"
+                        placeholder="seu.usuario"
+                        value="{% if profile.instagram_url %}{{ profile.instagram_url.split('/')[-1].lstrip('@') }}{% endif %}"
+                    >
+                </div>
             </div>
 
             <div class="col-md-6 mb-3">
                 <label class="form-label">WhatsApp</label>
-                <input type="text" name="whatsapp_number" class="form-control"
-                       value="{{ profile.whatsapp_number or '' }}">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-whatsapp"></i>
+                    </span>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="whatsappInput"
+                        name="whatsapp_number"
+                        placeholder="(11) 99999-9999"
+                        value="{{ profile.whatsapp_number or '' }}"
+                    >
+                </div>
             </div>
         </div>
+
+        <!-- LinkedIn + TikTok -->
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">LinkedIn</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-linkedin me-1"></i> linkedin.com/in/
+                    </span>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="linkedinHandle"
+                        name="linkedin_handle"
+                        placeholder="seu-usuario"
+                        value="{% if profile.linkedin_url %}{{ profile.linkedin_url.split('/')[-1] }}{% endif %}"
+                    >
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label">TikTok</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-tiktok me-1"></i> tiktok.com/@
+                    </span>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="tiktokHandle"
+                        name="tiktok_handle"
+                        placeholder="seu.usuario"
+                        value="{% if profile.tiktok_url %}{{ profile.tiktok_url.split('/')[-1].lstrip('@') }}{% endif %}"
+                    >
+                </div>
+            </div>
+        </div>
+
 
         <!-- Modalidades + Localização -->
         <div class="row">
@@ -278,6 +338,7 @@
         <button type="submit" class="btn btn-success">Salvar</button>
         </form>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.8/dist/inputmask.min.js"></script>
 
     <script>
       // --- Cropper (sua lógica original) ---
@@ -337,6 +398,12 @@
       const cidadePresencial = document.getElementById('cidadePresencial');
       const estadoPresencial = document.getElementById('estadoPresencial');
       const ruaPresencial = document.getElementById('ruaPresencial');
+
+      const whatsappInput = document.getElementById('whatsappInput');
+      if (whatsappInput && window.Inputmask) {
+        Inputmask({ mask: "(99) 99999-9999" }).mask(whatsappInput);
+      }
+
 
       function updateLocationFields() {
         // Online-only: mostra estado online
