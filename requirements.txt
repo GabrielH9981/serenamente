@@ -5,5 +5,5 @@ Werkzeug==3.1.3
 gunicorn
 cloudinary
 authlib
-
+requests
 

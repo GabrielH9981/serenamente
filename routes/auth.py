@@ -29,6 +29,8 @@ def verificar_dados_obrigatorios():
         'auth.completar_cadastro',
         'auth.verificar_email',        # ✅ nova
         'auth.enviar_codigo_email',    # ✅ nova
+        'ferramentas.conectar_google_calendar',  # ✅ novo
+        'ferramentas.google_calendar_callback',  # ✅ novo
         'auth.alterar_email',
         'static'
     }

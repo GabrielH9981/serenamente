@@ -8,13 +8,27 @@
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <!-- Menu normal (aparece apenas em telas grandes) -->
+    <!-- Menu normal (apenas telas grandes) -->
     <div class="collapse navbar-collapse d-none d-lg-flex justify-content-end">
       <ul class="navbar-nav mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link text-white" href="/psicologos">Sou Paciente</a></li>
-        <li class="nav-item"><a class="nav-link text-white" href="/parceiro">Sou Psicólogo(a)</a></li>
-        <li class="nav-item"><a class="nav-link text-white" href="#sobre">Sobre Nós</a></li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="/psicologos">Sou Paciente</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="/parceiro">Sou Psicólogo(a)</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="#sobre">Sobre Nós</a>
+        </li>
+
         {% if session.get('user_id') %}
+          <!-- NOVA ABA FERRAMENTAS -->
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{{ url_for('ferramentas.ferramentas_home') }}">
+              Ferramentas
+            </a>
+          </li>
+
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
               {{ session['user_name'] }}
@@ -26,7 +40,9 @@
           </li>
         {% else %}
           <li class="nav-item">
-            <a class="btn btn-light text-primary fw-semibold ms-3" href="/login" style="border-radius: 20px;">Login</a>
+            <a class="btn btn-light text-primary fw-semibold ms-3" href="/login" style="border-radius: 20px;">
+              Login
+            </a>
           </li>
         {% endif %}
       </ul>
@@ -44,12 +60,19 @@
     <a href="/psicologos" class="nav-link mb-2">Sou Paciente</a>
     <a href="/parceiro" class="nav-link mb-2">Sou Psicólogo(a)</a>
     <a href="#sobre" class="nav-link mb-2">Sobre Nós</a>
+
     {% if session.get('user_id') %}
       <hr>
+      <!-- Ferramentas no mobile -->
+      <a href="{{ url_for('ferramentas.ferramentas_home') }}" class="nav-link mb-2">
+        Ferramentas
+      </a>
       <a href="/perfil" class="nav-link">Editar Perfil</a>
       <a href="/logout" class="nav-link">Sair</a>
     {% else %}
-      <a href="/login" class="btn btn-primary w-100 mt-3" style="background-color: #6C63FF; border: none;">Login</a>
+      <a href="/login" class="btn btn-primary w-100 mt-3" style="background-color: #6C63FF; border: none;">
+        Login
+      </a>
     {% endif %}
   </div>
 </div>
