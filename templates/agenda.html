@@ -139,257 +139,40 @@
   </div>
 </div>
 
+<!-- Inline config gerado pelo servidor (URLs e outros valores dinâmicos) -->
 <script>
-/* eventsByDate já preparado no template (deve conter id, time, summary, description) */
-const eventsByDate = {
-    {% for d in calendar_days %}
-        {% if d.date %}
-            "{{ d.date }}": [
-                {% for ev in d.events %}
-                    {
-                        "id": "{{ ev.id|e }}",
-                        "time": "{{ ev.time|e }}",
-                        "summary": "{{ ev.summary|e }}",
-                        "description": "{{ ev.description|e }}"
-                    }{% if not loop.last %},{% endif %}
-                {% endfor %}
-            ]{% if not loop.last %},{% endif %}
-        {% endif %}
-    {% endfor %}
-};
-
-function renderEventCard(ev, container) {
-    // card wrapper
-    const card = document.createElement('div');
-    card.className = 'mb-2 p-2 rounded border';
-
-    // top: título + btns
-    const top = document.createElement('div');
-    top.className = 'd-flex justify-content-between align-items-center';
-
-    const titleDiv = document.createElement('div');
-    titleDiv.innerHTML = '<strong>' + (ev.time ? (ev.time + ' — ') : '') + '</strong>' + escapeHtml(ev.summary);
-    top.appendChild(titleDiv);
-
-    const actions = document.createElement('div');
-
-    // Edit button
-    const btnEdit = document.createElement('button');
-    btnEdit.className = 'btn btn-sm btn-outline-primary me-2';
-    btnEdit.textContent = 'Editar';
-    btnEdit.type = 'button';
-    btnEdit.addEventListener('click', function () {
-        openEditForm(ev, card);
-    });
-    actions.appendChild(btnEdit);
-
-    // Delete button
-    const btnDelete = document.createElement('button');
-    btnDelete.className = 'btn btn-sm btn-outline-danger';
-    btnDelete.textContent = 'Excluir';
-    btnDelete.type = 'button';
-    btnDelete.addEventListener('click', function () {
-        if (!confirm('Confirmar exclusão deste evento?')) return;
-        deleteEvent(ev.id, card);
-    });
-    actions.appendChild(btnDelete);
-
-    top.appendChild(actions);
-    card.appendChild(top);
-
-    if (ev.description) {
-        const desc = document.createElement('div');
-        desc.className = 'text-muted small mt-1';
-        desc.innerHTML = escapeHtml(ev.description);
-        card.appendChild(desc);
-    }
-
-    container.appendChild(card);
-}
-
-function openEditForm(ev, cardElement) {
-    // substitui conteúdo do card por um form inline
-    cardElement.innerHTML = '';
-
-    const form = document.createElement('form');
-    form.className = 'mb-2';
-    form.innerHTML = `
-      <div class="mb-2">
-        <label class="form-label small mb-1">Título</label>
-        <input type="text" name="titulo" class="form-control form-control-sm" value="${escapeHtml(ev.summary)}" required>
-      </div>
-      <div class="row g-2">
-        <div class="col-6">
-          <label class="form-label small mb-1">Início</label>
-          <input type="time" name="hora_inicio" class="form-control form-control-sm" value="${ev.time || ''}" required>
-        </div>
-        <div class="col-6">
-          <label class="form-label small mb-1">Fim</label>
-          <input type="time" name="hora_fim" class="form-control form-control-sm">
-        </div>
-      </div>
-      <div class="mb-2 mt-2">
-        <label class="form-label small mb-1">Descrição</label>
-        <textarea name="descricao" class="form-control form-control-sm" rows="2">${escapeHtml(ev.description || '')}</textarea>
-      </div>
-      <div class="d-flex justify-content-end gap-2">
-        <button type="button" class="btn btn-sm btn-secondary btn-cancel">Cancelar</button>
-        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-      </div>
-    `;
-
-    // cancelar volta ao estado anterior (renderEventCard)
-    form.querySelector('.btn-cancel').addEventListener('click', function () {
-        // limpar e re-renderizar original
-        cardElement.innerHTML = '';
-        renderEventCard(ev, cardElement.parentElement); // render novamente no container
-    });
-
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const fd = new FormData(form);
-        const payload = {
-            event_id: ev.id,
-            titulo: fd.get('titulo'),
-            data: document.getElementById('modalData').value,
-            hora_inicio: fd.get('hora_inicio'),
-            hora_fim: fd.get('hora_fim'),
-            descricao: fd.get('descricao')
-        };
-
-        fetch("{{ url_for('ferramentas.editar_evento_agenda') }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        }).then(r => r.json()).then(res => {
-            if (res && res.success) {
-                // atualizar evento localmente e re-renderizar
-                ev.summary = payload.titulo;
-                ev.time = payload.hora_inicio;
-                ev.description = payload.descricao;
-                cardElement.innerHTML = '';
-                renderEventCard(ev, cardElement.parentElement);
-            } else {
-                alert('Erro ao editar evento.');
-            }
-        }).catch(err => {
-            console.error(err);
-            alert('Erro ao editar evento.');
-        });
-    });
-
-    cardElement.appendChild(form);
-}
-
-function renderDayCell(date) {
-    const cell = document.querySelector(`.day-box[data-date="${date}"]`);
-    if (!cell) return;
-
-    const container = cell.querySelector('.day-events-container');
-    if (!container) return;
-
-    // limpa
-    container.innerHTML = '';
-
-    const evs = eventsByDate[date] || [];
-
-    // mostra até 2
-    const maxShow = 2;
-    const toShow = evs.slice(0, maxShow);
-
-    toShow.forEach(ev => {
-        const pill = document.createElement('div');
-        pill.className = 'event-pill';
-        pill.title = ev.summary;
-        pill.textContent = (ev.time ? (ev.time + ' ') : '') + ev.summary;
-        // evitar que clique no pill dispare o openModal duas vezes
-        pill.addEventListener('click', function(e){ e.stopPropagation(); openModal(date); });
-        container.appendChild(pill);
-    });
-
-    // se houver mais -> "Mais N"
-    if (evs.length > maxShow) {
-        const more = document.createElement('div');
-        more.className = 'event-pill more-pill';
-        more.textContent = '+' + (evs.length - maxShow) + ' Mais';
-        more.title = 'Abrir lista completa';
-        more.addEventListener('click', function(e){
-            e.stopPropagation();
-            openModal(date);
-        });
-        container.appendChild(more);
-    }
-}
-
-/* inicializa todas as células ao carregar a página */
-document.addEventListener('DOMContentLoaded', function() {
-    // renderiza todas as células do mês (apenas para garantir consistência com eventsByDate)
-    document.querySelectorAll('.day-box[data-date]').forEach(box => {
-        const d = box.getAttribute('data-date');
-        renderDayCell(d);
-    });
-});
-
-function deleteEvent(eventId, cardElement) {
-    fetch("{{ url_for('ferramentas.deletar_evento_agenda') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId })
-    }).then(r => r.json()).then(res => {
-        if (res && res.success) {
-            const date = document.getElementById('modalData').value;
-            if (eventsByDate[date]) {
-                eventsByDate[date] = eventsByDate[date].filter(x => x.id !== eventId);
-            }
-            // remove o card da lista (UI do modal)
-            cardElement.remove();
-
-            // re-render rotina da célula no calendário
-            renderDayCell(date);
-        } else {
-            alert('Erro ao excluir evento.');
-            console.log(res);
-        }
-    }).catch(err => {
-        console.error(err);
-        alert('Erro ao excluir evento.');
-    });
-}
-
-function openModal(date) {
-    document.getElementById("modalData").value = date;
-    document.getElementById("modalDateLabel").textContent = date;
-
-    const list = document.getElementById('dayEventsList');
-    list.innerHTML = '';
-
-    const evs = eventsByDate[date] || [];
-
-    if (evs.length === 0) {
-        list.innerHTML = '<div class="alert alert-info mb-0">Nenhum evento programado neste dia.</div>';
-    } else {
-        evs.forEach(ev => {
-            renderEventCard(ev, list);
-        });
-    }
-
-    // mostrar modal
-    const bsModal = new bootstrap.Modal(document.getElementById('modalCriar'));
-    bsModal.show();
-}
-
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
-}
+  window.AGENDA_CONFIG = {
+    editarUrl: "{{ url_for('ferramentas.editar_evento_agenda') }}",
+    deletarUrl: "{{ url_for('ferramentas.deletar_evento_agenda') }}",
+    criarUrl: "{{ url_for('ferramentas.criar_evento_agenda') }}"
+  };
 </script>
 
+<!-- eventsByDate gerado pelo template (mantemos inline porque depende dos dados do servidor) -->
+<script>
+  window.eventsByDate = {
+    {% for d in calendar_days %}
+      {% if d.date %}
+        "{{ d.date }}": [
+          {% for ev in d.events %}
+            {
+              "id": "{{ ev.id|e }}",
+              "time": "{{ ev.time|e }}",
+              "summary": "{{ ev.summary|e }}",
+              "description": "{{ ev.description|e }}"
+            }{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]{% if not loop.last %},{% endif %}
+      {% endif %}
+    {% endfor %}
+  };
+</script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Carrega bundle do Bootstrap (necessário antes do nosso JS que usa bootstrap.Modal) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+
+<!-- Nosso JS separado (coloque defer para não bloquear; usa as variáveis window.AGENDA_CONFIG e window.eventsByDate) -->
+<script src="{{ url_for('static', filename='js/agenda.js') }}" defer></script>
 </body>
 </html>
+

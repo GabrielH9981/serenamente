@@ -189,6 +189,48 @@
         </div>
 
 
+        <!-- INSIRA isso no local apropriado do seu form, por exemplo antes do botão Salvar -->
+        <div class="form-section mt-4">
+          <h4>Horários disponíveis</h4>
+          <p class="text-muted small">Informe os intervalos em que costuma atender em cada dia. Você pode adicionar múltiplos períodos por dia.</p>
+
+          <div id="availabilityContainer" class="mb-3">
+            {% set days = [
+              ('monday','Segunda'),
+              ('tuesday','Terça'),
+              ('wednesday','Quarta'),
+              ('thursday','Quinta'),
+              ('friday','Sexta'),
+              ('saturday','Sábado'),
+              ('sunday','Domingo')
+            ] %}
+
+            {% for day_key, day_label in days %}
+              <div class="card mb-2">
+                <div class="card-body p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>{{ day_label }}</strong>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRange('{{ day_key }}')">
+                      <i class="bi bi-plus-lg"></i> Adicionar período
+                    </button>
+                  </div>
+
+                  <!-- container vazio: o JS vai popular com os ranges salvos (se houver) -->
+                  <div id="day-{{ day_key }}" class="ranges-list"></div>
+
+                  <div class="text-muted small">Dica: para blocos separados (ex: 08:00-12:00 e 14:00-18:00), adicione dois períodos.</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- campo oculto que vai enviar o JSON para o backend -->
+          <input type="hidden" name="availability" id="availabilityInput" value='{{ profile.availability | default("") }}'>
+        </div>
+
+
+
+
         <!-- Modalidades + Localização -->
         <div class="row">
             <!-- Modalidades -->
@@ -459,5 +501,108 @@
       }
     });
     </script>
+
+<script>
+  // --- Availability schedule logic ---
+  const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+  function addRange(dayKey, start = '', end = '') {
+    const container = document.getElementById(`day-${dayKey}`);
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'd-flex align-items-center mb-2 time-range';
+
+    const inputStart = document.createElement('input');
+    inputStart.type = 'time';
+    inputStart.className = 'form-control form-control-sm me-2 range-start';
+    inputStart.value = start;
+
+    const dash = document.createElement('span');
+    dash.className = 'me-2';
+    dash.textContent = '—';
+
+    const inputEnd = document.createElement('input');
+    inputEnd.type = 'time';
+    inputEnd.className = 'form-control form-control-sm me-2 range-end';
+    inputEnd.value = end;
+
+    const btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'btn btn-sm btn-outline-danger';
+    btnRemove.innerHTML = '<i class="bi bi-trash"></i>';
+    btnRemove.onclick = function() { removeRange(btnRemove); };
+
+    wrapper.appendChild(inputStart);
+    wrapper.appendChild(dash);
+    wrapper.appendChild(inputEnd);
+    wrapper.appendChild(btnRemove);
+
+    container.appendChild(wrapper);
+  }
+
+  function removeRange(buttonEl) {
+    const wrapper = buttonEl.closest('.time-range');
+    if (wrapper) wrapper.remove();
+  }
+
+  // Serializa os ranges para um objeto e coloca no input hidden como JSON
+  function serializeAvailability() {
+    const obj = {};
+    for (const day of DAYS) {
+      const dayContainer = document.getElementById(`day-${day}`);
+      const ranges = [];
+      if (!dayContainer) { obj[day] = ranges; continue; }
+
+      const wrappers = dayContainer.querySelectorAll('.time-range');
+      wrappers.forEach(w => {
+        const startInput = w.querySelector('.range-start');
+        const endInput = w.querySelector('.range-end');
+        const startVal = startInput ? startInput.value : '';
+        const endVal = endInput ? endInput.value : '';
+        if (startVal && endVal) {
+          // armazenar como HH:MM
+          ranges.push({ start: startVal, end: endVal });
+        }
+      });
+      obj[day] = ranges;
+    }
+    document.getElementById('availabilityInput').value = JSON.stringify(obj);
+    return obj;
+  }
+
+  // Ao submeter o formulário, serializa antes de enviar
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function (e) {
+      // serializa (substitui o valor do campo hidden)
+      serializeAvailability();
+      // aqui não prevenimos o submit; o form segue
+    });
+  });
+
+  // Se quiser popular dynamicamente (ex: caso o navegador não tenha preenchido os inputs via Jinja)
+  // podemos tentar ler o input hidden e renderizar os ranges ao carregar
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      const hidden = document.getElementById('availabilityInput');
+      if (hidden && hidden.value) {
+        const parsed = JSON.parse(hidden.value);
+        for (const day of DAYS) {
+          if (parsed[day] && Array.isArray(parsed[day])) {
+            parsed[day].forEach(r => {
+              // adiciona um range já preenchido
+              addRange(day, r.start || '', r.end || '');
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // se parse falhar, ignora
+      console.log('Nenhuma disponibilidade pré-carregada ou JSON inválido.');
+    }
+  });
+</script>
+
+
 </body>
 </html>

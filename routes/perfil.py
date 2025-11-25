@@ -7,6 +7,7 @@ from io import BytesIO
 import datetime
 from cloudinary.uploader import upload as cloudinary_upload
 from utils.cloudinary_config import cloudinary
+import json
 
 perfil_bp = Blueprint('perfil', __name__)
 
@@ -23,7 +24,7 @@ def perfil():
     cursor.execute("SELECT * FROM profiles WHERE user_id = %s", (session['user_id'],))
     profile = cursor.fetchone()
 
-    # select dos dias restantes de plano
+    # select dos dias restantes de plano (mantive sua lógica)
     cursor.execute("""
             SELECT ac.user_id, ac.activated_at, ac.plan_duration_days
             FROM activation_codes ac
@@ -32,7 +33,6 @@ def perfil():
         """, (session['user_id'],))
 
     plan_days = 'SEM PLANO'
-
     for row in cursor.fetchall():
         dias = int(row['plan_duration_days'])
         ativado_em = row['activated_at']
@@ -83,10 +83,8 @@ def perfil():
         # monta o "location" só pra ter um texto amigável (sem depender disso)
         location = ''
         if atendimento_presencial and pres_cep and pres_cidade and pres_rua and pres_numero and pres_estado:
-            # Ex: 00000-000 - Rua exemplo, 123 - CIDADE - BA
             location = f"{pres_cep} - {pres_rua}, {pres_numero} - {pres_cidade.upper()} - {pres_estado}"
         elif atendimento_online and not atendimento_presencial and online_estado:
-            # só online: mostra só o estado
             location = online_estado
 
         # novos campos sociais
@@ -109,17 +107,19 @@ def perfil():
         linkedin_url = build_url("https://linkedin.com/in/", linkedin_handle)
         tiktok_url = build_url("https://tiktok.com/@", tiktok_handle, strip_at=True)
 
-        atendimento_online = 1 if request.form.get('atendimento_online') else 0
-        atendimento_presencial = 1 if request.form.get('atendimento_presencial') else 0
-
-        # (online_estado e pres_* você já pega aí em cima, mantem igual)
-
-        # monta o location bonitinho (como já fizemos antes)
-        location = ''
-        if atendimento_presencial and pres_cep and pres_cidade and pres_rua and pres_numero and pres_estado:
-            location = f"{pres_cep} - {pres_rua}, {pres_numero} - {pres_cidade.upper()} - {pres_estado}"
-        elif atendimento_online and not atendimento_presencial and online_estado:
-            location = online_estado
+        # --- disponibilidade (availability) recebido como JSON no campo hidden 'availability' ---
+        availability_raw = request.form.get('availability', '')
+        availability_json = ''
+        if availability_raw:
+            try:
+                # validar JSON (pode armazenar diretamente a string, mas validamos para consistência)
+                parsed = json.loads(availability_raw)
+                # opcional: aqui você pode validar formato (dias, start/end, HH:MM), por enquanto só garantimos ser JSON
+                availability_json = json.dumps(parsed, ensure_ascii=False)
+            except Exception as e:
+                # se inválido, guarda string vazia (ou tratar como preferir)
+                print("JSON de disponibilidade inválido:", e)
+                availability_json = ''
 
         data = {
             'short_bio': request.form.get('short_bio'),
@@ -140,6 +140,7 @@ def perfil():
             'pres_numero': pres_numero,
             'linkedin_url': linkedin_url,
             'tiktok_url': tiktok_url,
+            'availability': availability_json
         }
 
         if profile:
@@ -162,7 +163,8 @@ def perfil():
                     pres_rua=%s,
                     pres_numero=%s,
                     linkedin_url=%s,
-                    tiktok_url=%s
+                    tiktok_url=%s,
+                    availability=%s
                 WHERE user_id=%s
             """, (
                 data['short_bio'], data['full_bio'], data['profile_picture_url'], data['location'],
@@ -171,10 +173,9 @@ def perfil():
                 data['online_estado'], data['pres_cep'], data['pres_cidade'],
                 data['pres_estado'], data['pres_rua'], data['pres_numero'],
                 data['linkedin_url'], data['tiktok_url'],
+                data['availability'],
                 session['user_id']
             ))
-
-
         else:
             cursor.execute("""
                 INSERT INTO profiles (
@@ -182,8 +183,8 @@ def perfil():
                     price_range, atendimento_online, atendimento_presencial,
                     whatsapp_number, instagram_url, website_url,
                     online_estado, pres_cep, pres_cidade, pres_estado, pres_rua, pres_numero,
-                    linkedin_url, tiktok_url
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    linkedin_url, tiktok_url, availability
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 session['user_id'], data['short_bio'], data['full_bio'], data['profile_picture_url'],
                 data['location'], data['price_range'], data['atendimento_online'],
@@ -191,7 +192,8 @@ def perfil():
                 data['instagram_url'], data['website_url'],
                 data['online_estado'], data['pres_cep'], data['pres_cidade'],
                 data['pres_estado'], data['pres_rua'], data['pres_numero'],
-                data['linkedin_url'], data['tiktok_url']
+                data['linkedin_url'], data['tiktok_url'],
+                data['availability']
             ))
 
             conn.commit()
@@ -260,3 +262,4 @@ def perfil():
         selected_publicos=selected_publicos,
         plan_days=plan_days
     )
+
