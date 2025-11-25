@@ -1,7 +1,8 @@
 # routes/ferramentas.py
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from db.db import get_db_connection
 from . import auth as auth_routes  # importa o módulo auth (com oauth)
+from urllib.parse import quote_plus
 import calendar
 import datetime
 import requests
@@ -18,7 +19,8 @@ CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 def refresh_google_tokens(user_id):
     """
     Usa refresh_token salvo no banco para obter novo access_token.
-    Atualiza google_cal_access_token e google_cal_token_expiry no banco.
+    Atualiza google_cal_access_token, google_cal_refresh_token (se vier novo)
+    e google_cal_token_expiry no banco.
     Retorna dict com 'access_token' e 'expires_at' em caso de sucesso, ou None.
     """
     conn = get_db_connection()
@@ -30,6 +32,7 @@ def refresh_google_tokens(user_id):
         """, (user_id,))
         row = cursor.fetchone()
         if not row or not row.get('google_cal_refresh_token'):
+            print("refresh_google_tokens: sem refresh_token no banco")
             return None
 
         refresh_token = row['google_cal_refresh_token']
@@ -43,25 +46,61 @@ def refresh_google_tokens(user_id):
 
         resp = requests.post(GOOGLE_TOKEN_URL, data=payload, timeout=10)
         if resp.status_code != 200:
+            # tenta detectar invalid_grant para limpar tokens no DB
             print("Refresh token failed:", resp.status_code, resp.text)
+            try:
+                err = resp.json()
+                if err.get('error') == 'invalid_grant':
+                    # limpa tokens no banco (refresh revogado)
+                    cleanup_conn = get_db_connection()
+                    cur = cleanup_conn.cursor()
+                    cur.execute("""
+                        UPDATE users
+                        SET google_cal_access_token=NULL, google_cal_refresh_token=NULL, google_cal_token_expiry=NULL
+                        WHERE id=%s
+                    """, (user_id,))
+                    cleanup_conn.commit()
+                    cur.close()
+                    cleanup_conn.close()
+                    print("refresh_google_tokens: invalid_grant -> tokens limpos no banco")
+                    return None
+            except Exception:
+                pass
+
             return None
 
         token_data = resp.json()
         access_token = token_data.get("access_token")
         expires_in = token_data.get("expires_in")  # segundos
+        new_refresh_token = token_data.get("refresh_token")  # pode vir normalmente só na primeira concessão
+
+        if not access_token:
+            print("Refresh response sem access_token:", token_data)
+            return None
 
         expiry_dt = None
         if expires_in:
             expiry_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=int(expires_in))
 
-        # atualiza DB
+        # atualiza DB: access_token, expiry e se há novo refresh_token, salva
         cur_upd = conn.cursor()
-        cur_upd.execute("""
-            UPDATE users
-            SET google_cal_access_token = %s,
-                google_cal_token_expiry = %s
-            WHERE id = %s
-        """, (access_token, expiry_dt, user_id))
+        if new_refresh_token:
+            cur_upd.execute("""
+                UPDATE users
+                SET google_cal_access_token = %s,
+                    google_cal_refresh_token = %s,
+                    google_cal_token_expiry = %s
+                WHERE id = %s
+            """, (access_token, new_refresh_token, expiry_dt, user_id))
+            print("refresh_google_tokens: novo refresh_token recebido e salvo.")
+        else:
+            cur_upd.execute("""
+                UPDATE users
+                SET google_cal_access_token = %s,
+                    google_cal_token_expiry = %s
+                WHERE id = %s
+            """, (access_token, expiry_dt, user_id))
+            print("refresh_google_tokens: access_token atualizado, expiry salvo.")
         conn.commit()
         cur_upd.close()
 
@@ -71,13 +110,20 @@ def refresh_google_tokens(user_id):
         print("Erro ao tentar refresh token:", e)
         return None
     finally:
-        cursor.close()
-        conn.close()
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
 def get_events_from_calendar(access_token, time_min, time_max):
     """
     Faz a requisição à Calendar API e retorna o objeto Response.
+    (Essa função não tenta refresh; espere que a chamada que usa ela já tenha feito refresh proativo.)
     """
     headers = {"Authorization": f"Bearer {access_token}"}
     params = {
@@ -118,9 +164,8 @@ def ferramentas_home():
     # Primeiro e último dia do mês
     first_day = datetime.date(ano, mes, 1)
     last_day_num = calendar.monthrange(ano, mes)[1]
-    last_day = datetime.date(ano, mes, last_day_num)
 
-    # Intervalo pro Google Calendar
+    # Intervalo pro Google Calendar: mês inteiro
     time_min = datetime.datetime.combine(first_day, datetime.time.min).isoformat() + 'Z'
 
     # primeiro dia do mês seguinte
@@ -156,7 +201,7 @@ def ferramentas_home():
     cursor = conn.cursor(dictionary=True)
 
     try:
-        cursor.execute("SELECT google_cal_access_token FROM users WHERE id = %s", (session['user_id'],))
+        cursor.execute("SELECT google_cal_access_token, google_cal_refresh_token, google_cal_token_expiry FROM users WHERE id = %s", (session['user_id'],))
         user = cursor.fetchone()
     finally:
         cursor.close()
@@ -168,24 +213,46 @@ def ferramentas_home():
 
     if calendar_connected:
         access_token = user["google_cal_access_token"]
+        expires_at = user.get("google_cal_token_expiry")
 
-        headers = {"Authorization": f"Bearer {access_token}"}
+        # Se expiry for string (depende do driver), tenta converter
+        if isinstance(expires_at, str):
+            try:
+                expires_at = datetime.datetime.fromisoformat(expires_at)
+            except Exception:
+                expires_at = None
 
-        params = {
-            "timeMin": time_min,
-            "timeMax": time_max,
-            "singleEvents": True,
-            "orderBy": "startTime",
-            "maxResults": 200
-        }
+        # refresh proativo se expirar em menos de 60 segundos
+        need_refresh = False
+        if not expires_at:
+            need_refresh = True
+        else:
+            if expires_at <= datetime.datetime.utcnow() + datetime.timedelta(seconds=60):
+                need_refresh = True
 
+        if need_refresh:
+            print("Token próximo do expiry ou sem expiry - tentando refresh proativo...")
+            refreshed = refresh_google_tokens(session['user_id'])
+            if refreshed and refreshed.get('access_token'):
+                access_token = refreshed['access_token']
+                print("Refresh proativo bem-sucedido.")
+            else:
+                calendar_connected = False
+                error_msg = "Token expirado ou inválido. Reconecte sua Google Agenda."
+                print("Refresh proativo falhou -> marcar como desconectado.")
+
+    if calendar_connected:
         try:
-            resp = requests.get(
-                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                headers=headers,
-                params=params,
-                timeout=10
-            )
+            # tenta obter eventos usando access_token (novo ou antigo)
+            resp = get_events_from_calendar(access_token, time_min, time_max)
+
+            # se 401 → tenta refresh e repetir
+            if resp.status_code == 401:
+                print("Calendar API devolveu 401 → tentando refresh e retry...")
+                refreshed = refresh_google_tokens(session['user_id'])
+                if refreshed and refreshed.get('access_token'):
+                    access_token = refreshed['access_token']
+                    resp = get_events_from_calendar(access_token, time_min, time_max)
 
             if resp.status_code == 401:
                 calendar_connected = False
@@ -213,7 +280,6 @@ def ferramentas_home():
                         "date": date_part,
                         "time": time_part
                     })
-
 
         except Exception as e:
             print("Erro ao consultar Google Calendar:", e)
@@ -351,6 +417,7 @@ def google_calendar_callback():
     cursor.close()
     conn.close()
 
+    print("google_calendar_callback: tokens salvos com sucesso (refresh token presente ?: {})".format(bool(refresh_token_to_save)))
     return redirect(url_for('ferramentas.ferramentas_home'))
 
 
@@ -377,6 +444,7 @@ def criar_evento_agenda():
 
     if not user or not user.get('google_cal_access_token'):
         # sem token → manda reconectar
+        flash("Conecte sua Google Agenda antes de criar eventos.", "warning")
         return redirect(url_for('ferramentas.ferramentas_home'))
 
     access_token = user['google_cal_access_token']
@@ -388,6 +456,7 @@ def criar_evento_agenda():
     hora_fim = request.form.get('hora_fim')        # HH:MM (opcional)
 
     if not data or not hora_inicio:
+        flash("Data e hora de início são obrigatórios.", "warning")
         return redirect(url_for('ferramentas.ferramentas_home'))
 
     tz = 'America/Sao_Paulo'
@@ -428,6 +497,7 @@ def criar_evento_agenda():
 
         # Se token expirou, tenta refresh e reenvia
         if resp.status_code == 401:
+            print("criar_evento_agenda: 401 - tentando refresh...")
             refreshed = refresh_google_tokens(session['user_id'])
             if refreshed and refreshed.get('access_token'):
                 headers["Authorization"] = f"Bearer {refreshed['access_token']}"
@@ -438,11 +508,14 @@ def criar_evento_agenda():
                     timeout=10
                 )
 
+        if resp.status_code >= 400:
+            print("Erro criando evento (status, body):", resp.status_code, resp.text)
         resp.raise_for_status()
+
+        flash("Evento criado com sucesso na Google Agenda.", "success")
 
     except Exception as e:
         print("Erro ao criar evento na Google Calendar:", e)
-        # opcional: flash pra UI
         flash("Não foi possível criar o evento na Google Agenda.", "danger")
 
     return redirect(url_for('ferramentas.ferramentas_home'))
@@ -467,11 +540,9 @@ def desconectar_google_calendar():
         cursor.close()
         conn.close()
 
+    flash("Google Agenda desconectada.", "info")
     return redirect(url_for('ferramentas.ferramentas_home'))
 
-
-from urllib.parse import quote_plus
-from flask import jsonify
 
 @ferramentas_bp.route('/ferramentas/agenda/deletar', methods=['POST'])
 def deletar_evento_agenda():
@@ -479,7 +550,7 @@ def deletar_evento_agenda():
     if 'user_id' not in session:
         return jsonify({"success": False, "error": "not_authenticated"}), 401
 
-    event_id = request.form.get('event_id') or request.json.get('event_id')
+    event_id = request.form.get('event_id') or (request.json and request.json.get('event_id'))
     if not event_id:
         return jsonify({"success": False, "error": "missing_event_id"}), 400
 
@@ -513,7 +584,6 @@ def deletar_evento_agenda():
     if resp.status_code in (200, 204):
         return jsonify({"success": True})
     else:
-        # retorna o body do Google pra debugging
         try:
             return jsonify({"success": False, "status": resp.status_code, "body": resp.json()}), 400
         except Exception:
@@ -526,7 +596,7 @@ def editar_evento_agenda():
     if 'user_id' not in session:
         return jsonify({"success": False, "error": "not_authenticated"}), 401
 
-    data = request.form or request.json or {}
+    data = request.form or (request.json or {})
     event_id = data.get('event_id')
     titulo = data.get('titulo')
     data_day = data.get('data')    # yyyy-mm-dd
@@ -588,4 +658,3 @@ def editar_evento_agenda():
             return jsonify({"success": False, "error": str(e)}), 500
         except:
             return jsonify({"success": False, "error": "unknown"}), 500
-
