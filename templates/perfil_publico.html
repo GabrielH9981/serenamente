@@ -134,6 +134,16 @@
                     {% endfor %}
                 {% endif %}
 
+
+                <!-- Horários disponíveis (adicione antes do bloco Contato) -->
+                <!-- Mini-calendário paginado -->
+                <!-- container que será atualizado via AJAX -->
+                <div id="calendarFragmentContainer">
+                  <!-- conteúdo inicial carregado server-side (no primeiro load) -->
+                  {% include 'partials/_calendar_fragment.html' %}
+                </div>
+
+
                 <h4 class="section-title"><i class="bi bi-telephone me-2"></i>Contato</h4>
                 <div class="d-flex flex-wrap gap-2">
 
@@ -187,5 +197,69 @@
         </div>
     </div>
 </div>
+<script>
+  const profileId = {{ profile.id }};
+  const calendarContainer = document.getElementById('calendarFragmentContainer');
+
+  // função que carrega a página do calendário via AJAX
+  async function loadCalendarPage(page) {
+    try {
+      const url = new URL(window.location.origin + `/psicologo/${profileId}`);
+      url.searchParams.set('ajax', '1');
+      url.searchParams.set('page', page);
+      const resp = await fetch(url.toString(), { credentials: 'same-origin' });
+      if (!resp.ok) throw new Error('Erro ao carregar calendário');
+      const html = await resp.text();
+      calendarContainer.innerHTML = html;
+      attachCalendarHandlers(); // re-anexa handlers a novos botões
+    } catch (err) {
+      console.error('loadCalendarPage error', err);
+    }
+  }
+
+  // anexa event listeners para botões dentro do fragmento (incluindo paginação e slots)
+  function attachCalendarHandlers() {
+    // paginação (botões que têm classe ajax-page-btn)
+    calendarContainer.querySelectorAll('.ajax-page-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const p = this.dataset.page;
+        if (!p) return;
+        loadCalendarPage(parseInt(p,10));
+      });
+    });
+
+    // slot click
+    calendarContainer.querySelectorAll('.slot-btn').forEach(b => {
+      b.addEventListener('click', function (e) {
+        // limpar seleção
+        calendarContainer.querySelectorAll('.slot-btn').forEach(x => x.classList.remove('selected', 'btn-success'));
+        this.classList.add('selected', 'btn-success');
+        const date = this.dataset.date;
+        const time = this.dataset.time;
+        const dt = new Date(date + 'T' + time);
+        const opts = { weekday: 'long', day:'2-digit', month:'2-digit' };
+        const selectedInfo = calendarContainer.querySelector('#selectedInfo');
+        if (selectedInfo) selectedInfo.textContent = `${dt.toLocaleDateString('pt-BR', opts)} às ${time}`;
+        const waBtn = calendarContainer.querySelector('#waButton');
+        if (waBtn) {
+          waBtn.disabled = false;
+          const waNumber = waBtn.dataset.waNumber;
+          waBtn.onclick = function () {
+            const dayLabel = dt.toLocaleDateString('pt-BR', { weekday:'long' });
+            const msg = `Olá, gostaria de agendar uma sessão na ${dayLabel} ${date} às ${time}.`;
+            const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+          };
+        }
+      });
+    });
+  }
+
+  // quando a página carrega, anexa handlers ao conteúdo inicial
+  document.addEventListener('DOMContentLoaded', function () {
+    attachCalendarHandlers();
+  });
+</script>
+
 </body>
 </html>

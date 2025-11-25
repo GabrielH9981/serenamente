@@ -4,9 +4,49 @@ from db.db import get_db_connection
 from datetime import datetime, timedelta
 import math
 import random
+import json
+from datetime import datetime, timedelta, date, time as dt_time, timezone
 
 psicologos_bp = Blueprint('psicologos', __name__)
 
+
+# helper: parse ISO datetimes do Google (aceita offsets e 'Z') -> timestamp UTC (segundos)
+def iso_to_utc_ts(iso_str):
+    if not iso_str:
+        return None
+    try:
+        # normaliza 'Z' -> +00:00 para fromisoformat
+        if iso_str.endswith('Z'):
+            iso_str = iso_str[:-1] + "+00:00"
+        dt = datetime.fromisoformat(iso_str)
+        if dt.tzinfo is None:
+            # assume UTC if no tz (unlikely for dateTime), so treat as UTC
+            dt = dt.replace(tzinfo=timezone.utc)
+        # converte para UTC
+        dt_utc = dt.astimezone(timezone.utc)
+        return int(dt_utc.timestamp())
+    except Exception as e:
+        # se falhar, tenta parse de date-only (all-day event)
+        try:
+            d = datetime.fromisoformat(iso_str).date()
+            # marcar como dia todo -> 00:00 UTC do dia (pode bloquear todos os slots; depende do seu critério)
+            dt = datetime.combine(d, dt_time(0,0), tzinfo=timezone.utc)
+            return int(dt.timestamp())
+        except Exception:
+            print("iso_to_utc_ts parse fail:", e, iso_str)
+            return None
+
+# comparador de conflito usando timestamps UTC
+def slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, events_ts):
+    # events_ts: list of {'start_ts': int, 'end_ts': int}
+    for ev in events_ts:
+        s = ev.get('start_ts'); e = ev.get('end_ts')
+        if s is None or e is None:
+            continue
+        # overlap: slot_start < ev_end and slot_end > ev_start
+        if slot_start_ts < e and slot_end_ts > s:
+            return True
+    return False
 
 @psicologos_bp.route('/psicologos')
 def psicologos_publicos():
@@ -111,79 +151,162 @@ def psicologos_publicos():
                            total_pages=total_pages)
 
 
+# função auxiliar: verifica se um slot datetime (start,end) colide com evento (start,end)
+def slot_conflicts_with_events(slot_start_dt, slot_end_dt, events):
+    for ev in events:
+        try:
+            ev_start = datetime.fromisoformat(ev['start'].replace('Z', '+00:00')) if ev['start'].endswith('Z') else datetime.fromisoformat(ev['start'])
+            ev_end = datetime.fromisoformat(ev['end'].replace('Z', '+00:00')) if ev['end'].endswith('Z') else datetime.fromisoformat(ev['end'])
+            # se overlap
+            if slot_start_dt < ev_end and slot_end_dt > ev_start:
+                return True
+        except Exception as e:
+            # se parse falhar, evita bloquear por segurança
+            print("parse event fail", e, ev)
+            continue
+    return False
+
 @psicologos_bp.route('/psicologo/<int:profile_id>')
 def perfil_publico(profile_id):
+    import json
+    from routes.ferramentas import refresh_google_tokens, get_events_from_calendar
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # --- CONTROLE DE VISUALIZAÇÕES COM SESSION ---
-    if 'views' not in session:
-        session['views'] = {}
-
-    now = datetime.utcnow()
-    last_view_str = session['views'].get(str(profile_id))
-    should_insert = False
-
-    if not last_view_str:
-        should_insert = True
-    else:
-        try:
-            last_view = datetime.strptime(last_view_str, '%Y-%m-%d %H:%M:%S')
-            if now - last_view > timedelta(hours=24):
-                should_insert = True
-        except ValueError:
-            should_insert = True  # Em caso de erro na session, registra
-
-    if should_insert:
-        viewer_ip = request.remote_addr
-        cursor.execute("""
-            INSERT INTO profile_views (profile_id, viewer_ip)
-            VALUES (%s, %s)
-        """, (profile_id, viewer_ip))
-        conn.commit()
-        session['views'][str(profile_id)] = now.strftime('%Y-%m-%d %H:%M:%S')
-        session.modified = True
-
-    # --- CONSULTA DE DADOS DO PERFIL ---
     cursor.execute("""
-        SELECT p.*, u.name, u.crp
+        SELECT p.*, u.name, u.crp, u.id AS user_id,
+               u.google_cal_access_token, u.google_cal_refresh_token, u.google_cal_token_expiry
         FROM profiles p
         JOIN users u ON p.user_id = u.id
         WHERE p.id = %s
     """, (profile_id,))
     profile = cursor.fetchone()
-
     if not profile:
-        cursor.close()
-        conn.close()
+        cursor.close(); conn.close()
         return "Perfil não encontrado", 404
 
-    cursor.execute("""
-        SELECT a.* FROM approaches a
-        JOIN profile_approaches pa ON pa.approach_id = a.id
-        WHERE pa.profile_id = %s
-    """, (profile_id,))
+    # fetch metadata
+    cursor.execute("""SELECT a.* FROM approaches a JOIN profile_approaches pa ON pa.approach_id = a.id WHERE pa.profile_id = %s""", (profile_id,))
     abordagens = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT e.* FROM experiencias e
-        JOIN profile_experiencias pe ON pe.experiencia_id = e.id
-        WHERE pe.profile_id = %s
-    """, (profile_id,))
+    cursor.execute("""SELECT e.* FROM experiencias e JOIN profile_experiencias pe ON pe.experiencia_id = e.id WHERE pe.profile_id = %s""", (profile_id,))
     experiencias = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT p.* FROM publicos_alvo p
-        JOIN profile_publicos_alvo pp ON pp.publico_id = p.id
-        WHERE pp.profile_id = %s
-    """, (profile_id,))
+    cursor.execute("""SELECT p.* FROM publicos_alvo p JOIN profile_publicos_alvo pp ON pp.publico_id = p.id WHERE pp.profile_id = %s""", (profile_id,))
     publicos = cursor.fetchall()
+
+    # parse availability
+    try:
+        availability = json.loads(profile['availability']) if profile.get('availability') else {}
+    except Exception as e:
+        print("availability JSON parse error:", e)
+        availability = {}
+
+    # GET busy events from Google Calendar and convert to UTC timestamps
+    busy_events_ts = []  # list of {'start_ts': int, 'end_ts': int}
+    access_token = profile.get('google_cal_access_token')
+    calendar_connected = bool(access_token)
+    if calendar_connected:
+        try:
+            now = datetime.utcnow()
+            time_min = now.isoformat() + 'Z'
+            time_max = (now + timedelta(days=30)).isoformat() + 'Z'
+
+            resp = get_events_from_calendar(access_token, time_min, time_max)
+            # if unauthorized try refresh
+            if resp.status_code == 401:
+                refreshed = refresh_google_tokens(profile['user_id'])
+                if refreshed:
+                    access_token = refreshed['access_token']
+                    resp = get_events_from_calendar(access_token, time_min, time_max)
+
+            resp.raise_for_status()
+            items = resp.json().get('items', [])
+            for ev in items:
+                start_raw = ev.get('start', {}).get('dateTime') or ev.get('start', {}).get('date') or None
+                end_raw = ev.get('end', {}).get('dateTime') or ev.get('end', {}).get('date') or None
+                s_ts = iso_to_utc_ts(start_raw) if start_raw else None
+                e_ts = iso_to_utc_ts(end_raw) if end_raw else None
+                if s_ts and e_ts:
+                    busy_events_ts.append({'start_ts': s_ts, 'end_ts': e_ts})
+        except Exception as e:
+            print("Erro ao consultar Google Calendar (perfil_publico):", e)
+            busy_events_ts = []
 
     cursor.close()
     conn.close()
 
+    # ---------- construir páginas de dias com slots (server-side) ----------
+    window_days = 21
+    page_size = 7
+    start_date = date.today()
+
+    all_days = []
+    for offset in range(window_days):
+        d = start_date + timedelta(days=offset)
+        py_weekday = d.weekday()  # 0=Mon
+        weekday_key = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'][py_weekday]
+        ranges = availability.get(weekday_key, [])
+        slots = []
+        for r in ranges:
+            try:
+                s_raw = r.get('start') or '00:00'
+                e_raw = r.get('end') or '00:00'
+                s_h, s_m = map(int, s_raw.split(':'))
+                e_h, e_m = map(int, e_raw.split(':'))
+                first_hour = s_h + (1 if s_m > 0 else 0)
+                last_start = e_h - 1 if e_m == 0 else e_h
+                for hour in range(first_hour, last_start + 1):
+                    # build slot start/end in psychologist's local timezone: assume -03:00 (America/Sao_Paulo)
+                    # Create aware dt with tz offset -03:00 then get UTC timestamp
+                    tz_offset = timedelta(hours=-3)
+                    slot_start_local = datetime.combine(d, dt_time(hour=hour, minute=0, tzinfo=timezone(tz_offset)))
+                    slot_end_local = slot_start_local + timedelta(hours=1)
+                    slot_start_ts = int(slot_start_local.astimezone(timezone.utc).timestamp())
+                    slot_end_ts = int(slot_end_local.astimezone(timezone.utc).timestamp())
+
+                    # check conflict using timestamps
+                    if slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, busy_events_ts):
+                        continue
+
+                    slots.append({
+                        'time': f"{hour:02d}:00",
+                        'start_iso': slot_start_local.isoformat(),
+                        'start_ts': slot_start_ts
+                    })
+            except Exception as e:
+                print("Erro gerando slots:", e, r)
+                continue
+
+        all_days.append({
+            'date': d.isoformat(),
+            'weekday': weekday_key,
+            'label': d.strftime('%a %d/%m'),
+            'slots': slots
+        })
+
+    # pages
+    pages = [ all_days[i:i+page_size] for i in range(0, len(all_days), page_size) ]
+    total_pages = len(pages)
+    page = int(request.args.get('page', 1))
+    page = max(1, min(page, total_pages)) if pages else 1
+    page_index = page - 1
+    current_page_days = pages[page_index] if pages else []
+
+    # if AJAX requested, return only fragment for calendar (render partial)
+    if request.args.get('ajax'):
+        return render_template('partials/_calendar_fragment.html',
+                               current_page_days=current_page_days,
+                               profile=profile,
+                               current_page=page,
+                               total_pages=total_pages)
+
+    # otherwise render full page (original template), passing pages data too if needed
     return render_template("perfil_publico.html",
                            profile=profile,
                            abordagens=abordagens,
                            experiencias=experiencias,
-                           publicos=publicos)
+                           publicos=publicos,
+                           pages=pages,
+                           current_page=page,
+                           total_pages=total_pages,
+                           current_page_days=current_page_days)
