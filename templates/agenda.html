@@ -2,34 +2,157 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Ferramentas | Agenda - SerenaMente</title>
+    <title>Agenda Mensal | SerenaMente</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Fonte Inter + Bootstrap + Ícones -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap + Icons + Inter -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f5f5fb;
+        body { font-family: 'Inter', sans-serif; background: #f4f4fb; }
+
+        /* --- calendário: células fixas + pills cortadas com reticências --- */
+        .calendar-container { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+        .calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 12px;
+          margin-top: 20px;
         }
-        .page-title {
-            color: #333;
-            font-weight: 700;
+
+        /* célula com tamanho fixo — nada aqui pode expandir a caixa */
+        .day-box {
+          height: 140px;            /* ajuste a altura aqui se quiser maior/menor */
+          min-height: 140px;
+          max-height: 140px;
+          background: #fafafa;
+          border-radius: 10px;
+          padding: 8px;
+          cursor: pointer;
+          border: 1px solid transparent;
+          transition: 0.16s;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;         /* ESSENCIAL: evita expansão por conteúdo */
+          box-sizing: border-box;
         }
-        .card-tool {
-            border-radius: 16px;
-            border: none;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+
+        .day-box:hover { background: #eef0ff; border-color: #6c63ff; }
+
+        /* número do dia (ocupando linha superior) */
+        .day-number { font-weight: 600; font-size: 0.95rem; }
+
+        /* área de eventos ocupa o restante, mas sem permitir overflow que mexa no layout */
+        .day-events {
+          margin-top: 6px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          /* limitador interno: não deixa a lista empurrar o box */
+          max-height: calc(140px - 28px); /* 140 = altura do day-box; 28 é aproximado para header/spacing */
+          overflow: hidden; /* esconde conteúdo que ultrapassa o espaço disponível */
         }
-        .badge-status {
-            font-size: 0.75rem;
+
+        /* cada pill: uma única linha, cortada com ... se precisar */
+        .event-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.78rem;
+          padding: 6px 8px;
+          border-radius: 12px;
+          background: #6c63ff;
+          color: white;
+          box-sizing: border-box;
+          white-space: nowrap;      /* uma linha apenas */
+          overflow: hidden;
+          text-overflow: ellipsis; /* reticências */
         }
-        .agenda-empty {
-            background-color: #fafafe;
+
+        /* tempo fixo e título que usa ellipsis */
+        .event-time {
+          flex: 0 0 52px;           /* largura fixa para horário (ajuste se quiser) */
+          font-weight: 700;
+          font-size: 0.75rem;
+          opacity: 0.95;
+          text-align: left;
+          margin-right: 6px;
+          min-width: 48px;
         }
+
+        .event-title {
+          flex: 1 1 auto;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* badge +N */
+        .more-badge {
+          display: inline-block;
+          margin-top: 6px;
+          padding: 4px 8px;
+          border-radius: 12px;
+          background: #e9e9ff;
+          color: #6c63ff;
+          font-weight: 600;
+          font-size: 0.78rem;
+          text-align: center;
+          cursor: pointer;
+        }
+
+        /* responsividade: diminuir altura em telas pequenas */
+        @media (max-width: 900px) {
+          .day-box { height: 120px; min-height: 120px; max-height: 120px; }
+          .day-events { max-height: calc(120px - 28px); }
+        }
+
+        /* força células em tamanho fixo e evita que cresçam com conteúdo */
+        .calendar-grid .day-box {
+          min-height: 120px;   /* ajuste se quiser mais/menos */
+          max-height: 120px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* container de eventos fica com overflow auto caso precise scroll (mas curta altura) */
+        .day-events-container {
+          margin-top: 6px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding-right: 4px;
+          overflow: hidden;
+        }
+
+        /* pill: limitar o comprimento com reticências */
+        .event-pill {
+          font-size: 0.75rem;
+          padding: 4px 8px;
+          border-radius: 8px;
+          background: #6c63ff;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+        }
+
+        /* estilo do "Mais N" */
+        .event-pill.more-pill {
+          background: #e9e9ff;
+          color: #38308a;
+          cursor: pointer;
+        }
+
+        /* garante que os números do dia fiquem sempre visíveis */
+        .day-number { z-index: 5; }
+
+
     </style>
 </head>
 <body>
@@ -37,197 +160,379 @@
 {% include 'components/navbar.html' %}
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
-            <h2 class="page-title mb-1">Ferramentas do Psicólogo</h2>
-            <p class="text-muted mb-0">
-                Organize sua agenda e acompanhe seus atendimentos diretamente pela SerenaMente.
-            </p>
+
+    <h2 class="fw-bold mb-3">Agenda Mensal</h2>
+
+    {% if calendar_connected %}
+
+        <!-- Navegação entre meses -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a class="btn btn-outline-primary"
+               href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ prev_year }}&mes={{ prev_month }}">
+                <i class="bi bi-chevron-left"></i> Mês anterior
+            </a>
+
+            <h4 class="mb-0 fw-semibold">{{ month_label }}</h4>
+
+            <a class="btn btn-outline-primary"
+               href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ next_year }}&mes={{ next_month }}">
+                Próximo mês <i class="bi bi-chevron-right"></i>
+            </a>
         </div>
-    </div>
 
-    <div class="row g-4">
-        <!-- Card da Agenda -->
-        <div class="col-12 col-lg-8">
-            <div class="card card-tool p-3 p-md-4">
-                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                    <div>
-                        <h4 class="mb-1">
-                            <i class="bi bi-calendar3 me-2"></i>Agenda de Atendimentos
-                        </h4>
+        <div class="calendar-container">
 
-                        {% if calendar_connected %}
+            <!-- Cabeçalho dos dias -->
+            <div class="calendar-grid fw-bold text-center">
+                <div>Dom</div>
+                <div>Seg</div>
+                <div>Ter</div>
+                <div>Qua</div>
+                <div>Qui</div>
+                <div>Sex</div>
+                <div>Sáb</div>
+            </div>
 
-                        <!-- Formulário para criar novo compromisso -->
-                        <form method="post"
-                              action="{{ url_for('ferramentas.criar_evento_agenda') }}"
-                              class="row g-2 mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Título</label>
-                                <input type="text" name="titulo" class="form-control"
-                                       placeholder="Sessão com paciente" required>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small mb-1">Data</label>
-                                <input type="date" name="data" class="form-control" required>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small mb-1">Início</label>
-                                <input type="time" name="hora_inicio" class="form-control" required>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small mb-1">Término</label>
-                                <input type="time" name="hora_fim" class="form-control">
-                            </div>
-                            <div class="col-md-1 d-flex align-items-end">
-                                <button class="btn btn-primary w-100" type="submit"
-                                        title="Criar compromisso">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
-                            </div>
-                        </form>
+            <!-- Dias -->
+            <div class="calendar-grid mt-2">
 
-                        {% if events %}
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Horário</th>
-                                            <th>Descrição</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for ev in events %}
-                                        <tr>
-                                            <td>{{ ev.date or '-' }}</td>
-                                            <td>{{ ev.time or '-' }}</td>
-                                            <td>{{ ev.summary }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
+                {% for day in calendar_days %}
+                  <div class="day-box" data-date="{{ day.date }}" onclick="openModal('{{ day.date }}')">
+                    <div class="day-number {% if day.is_today %}text-primary{% endif %}">
+                        {{ day.day }}
+                    </div>
+
+                    <!-- container onde os pills serão injetados via JS -->
+                    <div class="day-events-container mt-2">
+                        <!-- conteúdo inicial (será substituído pelo JS ao carregar a página) -->
+                        {% for ev in day.events[:2] %}
+                            <div class="event-pill" title="{{ ev.summary }}">
+                                {{ ev.time }} {{ ev.summary }}
                             </div>
-                        {% else %}
-                            ...
+                        {% endfor %}
+                        {% if day.events|length > 2 %}
+                            <div class="event-pill more-pill" title="Abrir lista completa" onclick="openModal('{{ day.date }}'); event.stopPropagation();">
+                                +{{ day.events|length - 2 }} Mais
+                            </div>
                         {% endif %}
-                    {% else %}
-                        ...  <!-- bloco quando não está conectado -->
-                    {% endif %}
-
-
-                        <p class="text-muted mb-0">
-                            Visualize os compromissos sincronizados com a sua Google Agenda.
-                        </p>
-
-                        {% if calendar_connected %}
-                            <p class="text-muted small mb-0 mt-1">
-                                Eventos deste mês: <strong>{{ current_month }}</strong>
-                            </p>
-                        {% endif %}
-
                     </div>
-                </div>
+                  </div>
+                {% endfor %}
 
-                {% if error_msg %}
-                    <div class="alert alert-warning">
-                        {{ error_msg }}
-                    </div>
-                {% endif %}
-
-                {% if not calendar_connected %}
-                    <div class="border rounded-3 p-4 text-center text-muted agenda-empty">
-                        <i class="bi bi-hourglass-split mb-2" style="font-size: 2rem;"></i>
-                        <p class="mb-2">
-                            Você ainda não conectou sua Google Agenda.
-                        </p>
-                        <p class="small mb-3">
-                            Ao conectar, os eventos dos próximos dias aparecerão aqui e, futuramente,
-                            você poderá criar sessões diretamente pela plataforma.
-                        </p>
-                        <a href="{{ url_for('ferramentas.conectar_google_calendar') }}"
-                           class="btn btn-primary">
-                            <i class="bi bi-google me-1"></i> Conectar Google Agenda
-                        </a>
-                    </div>
-                {% else %}
-                    {% if events %}
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Data</th>
-                                        <th>Horário</th>
-                                        <th>Descrição</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                {% for ev in events %}
-                                    <tr>
-                                        <td>{{ ev.date or '-' }}</td>
-                                        <td>{{ ev.time or '-' }}</td>
-                                        <td>{{ ev.summary }}</td>
-                                    </tr>
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="border rounded-3 p-4 text-center text-muted agenda-empty">
-                            <i class="bi bi-calendar-x mb-2" style="font-size: 2rem;"></i>
-                            <p class="mb-1">Nenhum evento encontrado nos próximos 7 dias.</p>
-                            <p class="small mb-0">
-                                Crie eventos na sua Google Agenda para visualizá-los aqui.
-                            </p>
-                        </div>
-                    {% endif %}
-                {% endif %}
             </div>
         </div>
 
-        <!-- Card de integração -->
-        <div class="col-12 col-lg-4">
-            <div class="card card-tool p-3 p-md-4 h-100 d-flex flex-column justify-content-between">
-                <div>
-                    <h5 class="mb-2">
-                        <i class="bi bi-google me-2"></i>Integração com Google Agenda
-                    </h5>
-
-                    {% if calendar_connected %}
-                        <p class="text-muted small mb-3">
-                            Sua conta já está conectada à Google Agenda. Em breve você poderá
-                            criar sessões diretamente pela SerenaMente e elas aparecerão na sua agenda automaticamente.
-                        </p>
-                    {% else %}
-                        <p class="text-muted small mb-3">
-                            Conecte sua conta Google para sincronizar automaticamente seus horários de atendimento.
-                        </p>
-                    {% endif %}
-                </div>
-                <div>
-                    {% if calendar_connected %}
-                        <span class="badge bg-success-subtle text-success-emphasis badge-status mb-2">
-                            Conectada
-                        </span>
-                        <button class="btn btn-success w-100" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Google Agenda conectada
-                        </button>
-                    {% else %}
-                        <span class="badge bg-secondary-subtle text-secondary-emphasis badge-status mb-2">
-                            Não conectada
-                        </span>
-                        <a href="{{ url_for('ferramentas.conectar_google_calendar') }}"
-                           class="btn btn-outline-primary w-100">
-                            <i class="bi bi-google me-1"></i> Conectar Google Agenda
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
+    {% else %}
+        <!-- Não conectado -->
+        <div class="p-4 bg-white shadow-sm rounded text-center">
+            <h4 class="fw-bold mb-2">Google Agenda não conectada</h4>
+            <p class="text-muted">Conecte sua agenda para visualizar seus compromissos.</p>
+            <a href="{{ url_for('ferramentas.conectar_google_calendar') }}" class="btn btn-primary">
+                <i class="bi bi-google me-1"></i> Conectar Google Agenda
+            </a>
         </div>
-    </div>
+    {% endif %}
 </div>
 
-<!-- JS do Bootstrap -->
+
+<!-- MODAL: lista eventos do dia + formulário criar (substitua o modal antigo) -->
+<div class="modal fade" id="modalCriar" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Eventos — <span id="modalDateLabel"></span></h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Lista de eventos do dia -->
+        <div id="dayEventsList" class="mb-4"></div>
+
+        <hr>
+
+        <!-- Form de criação (envia para rota criar_evento_agenda) -->
+        <form method="post" action="{{ url_for('ferramentas.criar_evento_agenda') }}" id="createEventForm">
+          <input type="hidden" name="data" id="modalData">
+
+          <div class="mb-3">
+            <label class="form-label">Título</label>
+            <input type="text" name="titulo" class="form-control" placeholder="Sessão com paciente" required>
+          </div>
+
+          <div class="row">
+            <div class="col-6 mb-2">
+              <label class="form-label">Início</label>
+              <input type="time" name="hora_inicio" class="form-control" required>
+            </div>
+            <div class="col-6 mb-2">
+              <label class="form-label">Fim</label>
+              <input type="time" name="hora_fim" class="form-control">
+            </div>
+          </div>
+
+          <div class="mt-3 d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Fechar</button>
+            <button class="btn btn-success" type="submit">Criar evento</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* eventsByDate já preparado no template (deve conter id, time, summary, description) */
+const eventsByDate = {
+    {% for d in calendar_days %}
+        {% if d.date %}
+            "{{ d.date }}": [
+                {% for ev in d.events %}
+                    {
+                        "id": "{{ ev.id|e }}",
+                        "time": "{{ ev.time|e }}",
+                        "summary": "{{ ev.summary|e }}",
+                        "description": "{{ ev.description|e }}"
+                    }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]{% if not loop.last %},{% endif %}
+        {% endif %}
+    {% endfor %}
+};
+
+function renderEventCard(ev, container) {
+    // card wrapper
+    const card = document.createElement('div');
+    card.className = 'mb-2 p-2 rounded border';
+
+    // top: título + btns
+    const top = document.createElement('div');
+    top.className = 'd-flex justify-content-between align-items-center';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.innerHTML = '<strong>' + (ev.time ? (ev.time + ' — ') : '') + '</strong>' + escapeHtml(ev.summary);
+    top.appendChild(titleDiv);
+
+    const actions = document.createElement('div');
+
+    // Edit button
+    const btnEdit = document.createElement('button');
+    btnEdit.className = 'btn btn-sm btn-outline-primary me-2';
+    btnEdit.textContent = 'Editar';
+    btnEdit.type = 'button';
+    btnEdit.addEventListener('click', function () {
+        openEditForm(ev, card);
+    });
+    actions.appendChild(btnEdit);
+
+    // Delete button
+    const btnDelete = document.createElement('button');
+    btnDelete.className = 'btn btn-sm btn-outline-danger';
+    btnDelete.textContent = 'Excluir';
+    btnDelete.type = 'button';
+    btnDelete.addEventListener('click', function () {
+        if (!confirm('Confirmar exclusão deste evento?')) return;
+        deleteEvent(ev.id, card);
+    });
+    actions.appendChild(btnDelete);
+
+    top.appendChild(actions);
+    card.appendChild(top);
+
+    if (ev.description) {
+        const desc = document.createElement('div');
+        desc.className = 'text-muted small mt-1';
+        desc.innerHTML = escapeHtml(ev.description);
+        card.appendChild(desc);
+    }
+
+    container.appendChild(card);
+}
+
+function openEditForm(ev, cardElement) {
+    // substitui conteúdo do card por um form inline
+    cardElement.innerHTML = '';
+
+    const form = document.createElement('form');
+    form.className = 'mb-2';
+    form.innerHTML = `
+      <div class="mb-2">
+        <label class="form-label small mb-1">Título</label>
+        <input type="text" name="titulo" class="form-control form-control-sm" value="${escapeHtml(ev.summary)}" required>
+      </div>
+      <div class="row g-2">
+        <div class="col-6">
+          <label class="form-label small mb-1">Início</label>
+          <input type="time" name="hora_inicio" class="form-control form-control-sm" value="${ev.time || ''}" required>
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1">Fim</label>
+          <input type="time" name="hora_fim" class="form-control form-control-sm">
+        </div>
+      </div>
+      <div class="mb-2 mt-2">
+        <label class="form-label small mb-1">Descrição</label>
+        <textarea name="descricao" class="form-control form-control-sm" rows="2">${escapeHtml(ev.description || '')}</textarea>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-sm btn-secondary btn-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+      </div>
+    `;
+
+    // cancelar volta ao estado anterior (renderEventCard)
+    form.querySelector('.btn-cancel').addEventListener('click', function () {
+        // limpar e re-renderizar original
+        cardElement.innerHTML = '';
+        renderEventCard(ev, cardElement.parentElement); // render novamente no container
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = {
+            event_id: ev.id,
+            titulo: fd.get('titulo'),
+            data: document.getElementById('modalData').value,
+            hora_inicio: fd.get('hora_inicio'),
+            hora_fim: fd.get('hora_fim'),
+            descricao: fd.get('descricao')
+        };
+
+        fetch("{{ url_for('ferramentas.editar_evento_agenda') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        }).then(r => r.json()).then(res => {
+            if (res && res.success) {
+                // atualizar evento localmente e re-renderizar
+                ev.summary = payload.titulo;
+                ev.time = payload.hora_inicio;
+                ev.description = payload.descricao;
+                cardElement.innerHTML = '';
+                renderEventCard(ev, cardElement.parentElement);
+            } else {
+                alert('Erro ao editar evento.');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('Erro ao editar evento.');
+        });
+    });
+
+    cardElement.appendChild(form);
+}
+
+function renderDayCell(date) {
+    const cell = document.querySelector(`.day-box[data-date="${date}"]`);
+    if (!cell) return;
+
+    const container = cell.querySelector('.day-events-container');
+    if (!container) return;
+
+    // limpa
+    container.innerHTML = '';
+
+    const evs = eventsByDate[date] || [];
+
+    // mostra até 2
+    const maxShow = 2;
+    const toShow = evs.slice(0, maxShow);
+
+    toShow.forEach(ev => {
+        const pill = document.createElement('div');
+        pill.className = 'event-pill';
+        pill.title = ev.summary;
+        pill.textContent = (ev.time ? (ev.time + ' ') : '') + ev.summary;
+        // evitar que clique no pill dispare o openModal duas vezes
+        pill.addEventListener('click', function(e){ e.stopPropagation(); openModal(date); });
+        container.appendChild(pill);
+    });
+
+    // se houver mais -> "Mais N"
+    if (evs.length > maxShow) {
+        const more = document.createElement('div');
+        more.className = 'event-pill more-pill';
+        more.textContent = '+' + (evs.length - maxShow) + ' Mais';
+        more.title = 'Abrir lista completa';
+        more.addEventListener('click', function(e){
+            e.stopPropagation();
+            openModal(date);
+        });
+        container.appendChild(more);
+    }
+}
+
+/* inicializa todas as células ao carregar a página */
+document.addEventListener('DOMContentLoaded', function() {
+    // renderiza todas as células do mês (apenas para garantir consistência com eventsByDate)
+    document.querySelectorAll('.day-box[data-date]').forEach(box => {
+        const d = box.getAttribute('data-date');
+        renderDayCell(d);
+    });
+});
+
+function deleteEvent(eventId, cardElement) {
+    fetch("{{ url_for('ferramentas.deletar_evento_agenda') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId })
+    }).then(r => r.json()).then(res => {
+        if (res && res.success) {
+            const date = document.getElementById('modalData').value;
+            if (eventsByDate[date]) {
+                eventsByDate[date] = eventsByDate[date].filter(x => x.id !== eventId);
+            }
+            // remove o card da lista (UI do modal)
+            cardElement.remove();
+
+            // re-render rotina da célula no calendário
+            renderDayCell(date);
+        } else {
+            alert('Erro ao excluir evento.');
+            console.log(res);
+        }
+    }).catch(err => {
+        console.error(err);
+        alert('Erro ao excluir evento.');
+    });
+}
+
+function openModal(date) {
+    document.getElementById("modalData").value = date;
+    document.getElementById("modalDateLabel").textContent = date;
+
+    const list = document.getElementById('dayEventsList');
+    list.innerHTML = '';
+
+    const evs = eventsByDate[date] || [];
+
+    if (evs.length === 0) {
+        list.innerHTML = '<div class="alert alert-info mb-0">Nenhum evento programado neste dia.</div>';
+    } else {
+        evs.forEach(ev => {
+            renderEventCard(ev, list);
+        });
+    }
+
+    // mostrar modal
+    const bsModal = new bootstrap.Modal(document.getElementById('modalCriar'));
+    bsModal.show();
+}
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+</script>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

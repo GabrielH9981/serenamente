@@ -22,11 +22,26 @@
         </li>
 
         {% if session.get('user_id') %}
-          <!-- NOVA ABA FERRAMENTAS -->
-          <li class="nav-item">
-            <a class="nav-link text-white" href="{{ url_for('ferramentas.ferramentas_home') }}">
+          <!-- FERRAMENTAS COMO DROPDOWN -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-white" href="#" id="ferramentasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               Ferramentas
             </a>
+            <ul class="dropdown-menu" aria-labelledby="ferramentasDropdown">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('ferramentas.ferramentas_home') }}">
+                  Agenda
+                </a>
+              </li>
+              <!-- opção genérica comentada para adicionar no futuro -->
+              <!--
+              <li>
+                <a class="dropdown-item" href="/outra-ferramenta">
+                  Outra Ferramenta (exemplo)
+                </a>
+              </li>
+              -->
+            </ul>
           </li>
 
           <li class="nav-item dropdown">
@@ -63,10 +78,16 @@
 
     {% if session.get('user_id') %}
       <hr>
-      <!-- Ferramentas no mobile -->
-      <a href="{{ url_for('ferramentas.ferramentas_home') }}" class="nav-link mb-2">
-        Ferramentas
-      </a>
+      <!-- Ferramentas no mobile: lista simples com opções (fácil de editar) -->
+      <div class="mb-2">
+        <div class="fw-bold mb-1">Ferramentas</div>
+        <a href="{{ url_for('ferramentas.ferramentas_home') }}" class="nav-link ps-3">Agenda</a>
+        <!-- opção genérica comentada para adicionar no futuro -->
+        <!--
+        <a href="/outra-ferramenta" class="nav-link ps-3">Outra Ferramenta (exemplo)</a>
+        -->
+      </div>
+
       <a href="/perfil" class="nav-link">Editar Perfil</a>
       <a href="/logout" class="nav-link">Sair</a>
     {% else %}
