@@ -11,6 +11,19 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/perfil.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+    <style>
+      /* estilo para o contador de caracteres */
+      .char-counter {
+        display: block;
+        text-align: right;
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+        margin-bottom: 0.5rem;
+      }
+      /* garantir espaçamento quando o input está dentro de input-group */
+      .input-group + .char-counter { margin-left: 0.25rem; margin-right: 0.25rem; }
+    </style>
 </head>
 <body>
 
@@ -19,7 +32,7 @@
     <div class="container py-5">
         <h2 class="mb-4">Editar Perfil</h2>
 
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="perfilForm">
 
         <div class="row mb-4 align-items-start">
           <div class="col-md-8">
@@ -59,7 +72,7 @@
               {% else %}
                 <div class="d-flex flex-column align-items-center text-center">
                   <div id="originalProfilePic" class="profile-placeholder mb-2">
-                    <i class="bi bi-person"></i>
+                    <i class="bi bi-person" style="font-size:40px;"></i>
                   </div>
                   <p id="originalText" class="text-muted">Nenhuma foto enviada</p>
                 </div>
@@ -87,12 +100,14 @@
 
         <div class="mb-3">
             <label class="form-label">Mini bio</label>
-            <input type="text" name="short_bio" class="form-control" value="{{ profile.short_bio or '' }}">
+            <input type="text" name="short_bio" id="short_bio" maxlength="160" class="form-control" value="{{ profile.short_bio or '' }}">
+            <!-- contador será injetado pelo JS -->
         </div>
 
         <div class="mb-3">
             <label class="form-label">Biografia Completa</label>
-            <textarea name="full_bio" class="form-control" rows="5">{{ profile.full_bio or '' }}</textarea>
+            <textarea name="full_bio" id="full_bio" class="form-control" rows="5" maxlength="3000">{{ profile.full_bio or '' }}</textarea>
+            <!-- contador será injetado pelo JS -->
         </div>
 
         <!-- Website + Valor da Sessão -->
@@ -109,8 +124,11 @@
 
             <div class="col-md-6 mb-3">
                 <label class="form-label">Website</label>
-                <input type="text" name="website_url" class="form-control"
-                       value="{{ profile.website_url or '' }}">
+                <div class="input-group">
+                  <input type="text" name="website_url" id="website_url" maxlength="200" class="form-control"
+                         value="{{ profile.website_url or '' }}">
+                </div>
+                <!-- contador será injetado abaixo do input-group -->
             </div>
         </div>
 
@@ -127,10 +145,12 @@
                         class="form-control"
                         id="instagramHandle"
                         name="instagram_handle"
+                        maxlength="100"
                         placeholder="seu.usuario"
                         value="{% if profile.instagram_url %}{{ profile.instagram_url.split('/')[-1].lstrip('@') }}{% endif %}"
                     >
                 </div>
+                <!-- contador -->
             </div>
 
             <div class="col-md-6 mb-3">
@@ -144,6 +164,7 @@
                         class="form-control"
                         id="whatsappInput"
                         name="whatsapp_number"
+                        maxlength="20"
                         placeholder="(11) 99999-9999"
                         value="{{ profile.whatsapp_number or '' }}"
                     >
@@ -164,6 +185,7 @@
                         class="form-control"
                         id="linkedinHandle"
                         name="linkedin_handle"
+                        maxlength="100"
                         placeholder="seu-usuario"
                         value="{% if profile.linkedin_url %}{{ profile.linkedin_url.split('/')[-1] }}{% endif %}"
                     >
@@ -181,6 +203,7 @@
                         class="form-control"
                         id="tiktokHandle"
                         name="tiktok_handle"
+                        maxlength="100"
                         placeholder="seu.usuario"
                         value="{% if profile.tiktok_url %}{{ profile.tiktok_url.split('/')[-1].lstrip('@') }}{% endif %}"
                     >
@@ -188,8 +211,7 @@
             </div>
         </div>
 
-
-        <!-- INSIRA isso no local apropriado do seu form, por exemplo antes do botão Salvar -->
+        <!-- Horários disponíveis -->
         <div class="form-section mt-4">
           <h4>Horários disponíveis</h4>
           <p class="text-muted small">Informe os intervalos em que costuma atender em cada dia. Você pode adicionar múltiplos períodos por dia.</p>
@@ -215,25 +237,20 @@
                     </button>
                   </div>
 
-                  <!-- container vazio: o JS vai popular com os ranges salvos (se houver) -->
                   <div id="day-{{ day_key }}" class="ranges-list"></div>
 
                   <div class="text-muted small">Dica: para blocos separados (ex: 08:00-12:00 e 14:00-18:00), adicione dois períodos.</div>
                 </div>
               </div>
             {% endfor %}
+
           </div>
 
-          <!-- campo oculto que vai enviar o JSON para o backend -->
           <input type="hidden" name="availability" id="availabilityInput" value='{{ profile.availability | default("") }}'>
         </div>
 
-
-
-
         <!-- Modalidades + Localização -->
         <div class="row">
-            <!-- Modalidades -->
             <div class="col-md-6 mb-3">
                 <label class="form-label d-block">Modalidades de Atendimento</label>
                 <div class="form-check">
@@ -248,7 +265,6 @@
                 </div>
             </div>
 
-            <!-- ONLINE: Estado (ao lado das modalidades) -->
             <div class="col-md-6 mb-3">
                 <div id="onlineFields" class="d-none">
                     <label class="form-label">Estado (atendimento online)</label>
@@ -273,7 +289,7 @@
             </div>
         </div>
 
-        <!-- PRESENCIAL: CEP, Cidade, Estado, Rua, Número (OCUPA A LINHA TODA) -->
+        <!-- PRESENCIAL: endereço -->
         <div class="row">
             <div class="col-12 mb-3">
                 <div id="presencialFields" class="d-none">
@@ -282,14 +298,14 @@
                     <div class="mb-2">
                         <label class="form-label small mb-1">CEP</label>
                         <input type="text" id="cepPresencial" name="pres_cep"
-                               class="form-control" placeholder="00000-000"
+                               class="form-control" placeholder="00000-000" maxlength="9"
                                value="{{ profile.pres_cep or '' }}">
                     </div>
 
                     <div class="mb-2">
                         <label class="form-label small mb-1">Cidade</label>
                         <input type="text" id="cidadePresencial" name="pres_cidade"
-                               class="form-control" placeholder="Cidade"
+                               class="form-control" placeholder="Cidade" maxlength="120"
                                value="{{ profile.pres_cidade or '' }}">
                     </div>
 
@@ -317,22 +333,20 @@
                     <div class="mb-2">
                         <label class="form-label small mb-1">Rua</label>
                         <input type="text" id="ruaPresencial" name="pres_rua"
-                               class="form-control" placeholder="Rua exemplo"
+                               class="form-control" placeholder="Rua exemplo" maxlength="200"
                                value="{{ profile.pres_rua or '' }}">
                     </div>
 
                     <div class="mb-2">
                         <label class="form-label small mb-1">Número</label>
                         <input type="text" id="numeroPresencial" name="pres_numero"
-                               class="form-control" placeholder="123"
+                               class="form-control" placeholder="123" maxlength="20"
                                value="{{ profile.pres_numero or '' }}">
                     </div>
                 </div>
             </div>
         </div>
 
-
-        <!-- campo escondido que será enviado para o backend -->
         <input type="hidden" name="location" id="locationInput" value="{{ profile.location or '' }}">
 
         <div class="form-section">
@@ -377,13 +391,38 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success">Salvar</button>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success">Salvar</button>
+          <button type="button" id="previewProfileBtn" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#previewProfileModal">
+            Prévia do Perfil
+          </button>
+        </div>
+
         </form>
     </div>
+
+    <!-- Modal de Prévia -->
+    <div class="modal fade" id="previewProfileModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Prévia do Perfil</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="previewModalBody">
+            <div class="text-center text-muted py-4">Gerando prévia...</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.8/dist/inputmask.min.js"></script>
 
     <script>
-      // --- Cropper (sua lógica original) ---
+      // ---------- Cropper ----------
       let cropper;
       const inputImage = document.getElementById('inputImage');
       const imagePreview = document.getElementById('imagePreview');
@@ -446,16 +485,13 @@
         Inputmask({ mask: "(99) 99999-9999" }).mask(whatsappInput);
       }
 
-
       function updateLocationFields() {
-        // Online-only: mostra estado online
         if (chkOnline.checked && !chkPresencial.checked) {
           onlineFields.classList.remove('d-none');
         } else {
           onlineFields.classList.add('d-none');
         }
 
-        // Presencial: mostra bloco de endereço
         if (chkPresencial.checked) {
           presencialFields.classList.remove('d-none');
         } else {
@@ -465,11 +501,8 @@
 
       chkOnline.addEventListener('change', updateLocationFields);
       chkPresencial.addEventListener('change', updateLocationFields);
-
-      // ao carregar, aplica de acordo com o que já está salvo
       updateLocationFields();
 
-      // Máscara simples de CEP + ViaCEP
       if (cepPresencial) {
         cepPresencial.addEventListener('input', function () {
           let v = cepPresencial.value.replace(/\D/g, '');
@@ -500,106 +533,201 @@
         });
       }
     });
+
+    // ---------- Availability schedule logic ----------
+    const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+    function addRange(dayKey, start = '', end = '') {
+      const container = document.getElementById(`day-${dayKey}`);
+      if (!container) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'd-flex align-items-center mb-2 time-range';
+
+      const inputStart = document.createElement('input');
+      inputStart.type = 'time';
+      inputStart.className = 'form-control form-control-sm me-2 range-start';
+      inputStart.value = start;
+
+      const dash = document.createElement('span');
+      dash.className = 'me-2';
+      dash.textContent = '—';
+
+      const inputEnd = document.createElement('input');
+      inputEnd.type = 'time';
+      inputEnd.className = 'form-control form-control-sm me-2 range-end';
+      inputEnd.value = end;
+
+      const btnRemove = document.createElement('button');
+      btnRemove.type = 'button';
+      btnRemove.className = 'btn btn-sm btn-outline-danger';
+      btnRemove.innerHTML = '<i class="bi bi-trash"></i>';
+      btnRemove.onclick = function() { removeRange(btnRemove); };
+
+      wrapper.appendChild(inputStart);
+      wrapper.appendChild(dash);
+      wrapper.appendChild(inputEnd);
+      wrapper.appendChild(btnRemove);
+
+      container.appendChild(wrapper);
+    }
+
+    function removeRange(buttonEl) {
+      const wrapper = buttonEl.closest('.time-range');
+      if (wrapper) wrapper.remove();
+    }
+
+    function serializeAvailability() {
+      const obj = {};
+      for (const day of DAYS) {
+        const dayContainer = document.getElementById(`day-${day}`);
+        const ranges = [];
+        if (!dayContainer) { obj[day] = ranges; continue; }
+
+        const wrappers = dayContainer.querySelectorAll('.time-range');
+        wrappers.forEach(w => {
+          const startInput = w.querySelector('.range-start');
+          const endInput = w.querySelector('.range-end');
+          const startVal = startInput ? startInput.value : '';
+          const endVal = endInput ? endInput.value : '';
+          if (startVal && endVal) {
+            ranges.push({ start: startVal, end: endVal });
+          }
+        });
+        obj[day] = ranges;
+      }
+      document.getElementById('availabilityInput').value = JSON.stringify(obj);
+      return obj;
+    }
+
+    // submeter: serializa disponibilidade antes do submit
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function (e) {
+        serializeAvailability();
+      });
+    });
+
+    // ao carregar, popula os ranges já salvos (se houver)
+    document.addEventListener('DOMContentLoaded', function () {
+      try {
+        const hidden = document.getElementById('availabilityInput');
+        if (hidden && hidden.value) {
+          const parsed = JSON.parse(hidden.value);
+          for (const day of DAYS) {
+            if (parsed[day] && Array.isArray(parsed[day])) {
+              parsed[day].forEach(r => {
+                addRange(day, r.start || '', r.end || '');
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.log('Nenhuma disponibilidade pré-carregada ou JSON inválido.');
+      }
+    });
+
+    // ---------- Char counters (fix: insert after closest input-group if exists) ----------
+    function attachCharCounters() {
+      document.querySelectorAll('[maxlength]').forEach(el => {
+        // evitar múltiplos badges
+        if (el._hasCounter) return;
+
+        const limit = parseInt(el.getAttribute('maxlength')||0, 10);
+        const counter = document.createElement('div');
+        counter.className = 'char-counter';
+        counter.textContent = `${(el.value||'').length}/${limit}`;
+
+        // se o elemento estiver dentro de .input-group, insere depois do .input-group
+        const inputGroup = el.closest('.input-group');
+        const insertAfterEl = inputGroup || el;
+        insertAfterEl.insertAdjacentElement('afterend', counter);
+
+        const update = () => {
+          const len = el.value ? el.value.length : 0;
+          counter.textContent = `${len}/${limit}`;
+        };
+        el.addEventListener('input', update);
+        el._hasCounter = true;
+        // chamada inicial
+        update();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      attachCharCounters();
+    });
+
+    // ---------- Preview via AJAX (POST) - usa rota /perfil/preview ----------
+    document.getElementById('previewProfileBtn').addEventListener('click', async function (e) {
+      const modalBody = document.getElementById('previewModalBody');
+      modalBody.innerHTML = '<div class="text-center text-muted py-4">Gerando prévia...</div>';
+
+      try {
+        // garante availability atualizada
+        serializeAvailability();
+
+        const form = document.getElementById('perfilForm');
+        const fd = new FormData(form);
+
+        const resp = await fetch('{{ url_for("perfil.perfil_preview") }}', {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(()=>null);
+          modalBody.innerHTML = `<div class="alert alert-danger">Erro ao gerar prévia. (${resp.status})<br><pre style="white-space:pre-wrap">${text || ''}</pre></div>`;
+          return;
+        }
+
+        const html = await resp.text();
+        modalBody.innerHTML = html;
+      } catch (err) {
+        console.error('preview error', err);
+        modalBody.innerHTML = `<div class="alert alert-danger">Erro ao gerar prévia. Veja o console para detalhes.</div>`;
+      }
+    });
     </script>
 
 <script>
   // --- Availability schedule logic ---
-  const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+// (…tudo que você já tem: DAYS, addRange, removeRange, serializeAvailability, DOMContentLoaded que carrega ranges…)
 
-  function addRange(dayKey, start = '', end = '') {
-    const container = document.getElementById(`day-${dayKey}`);
-    if (!container) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'd-flex align-items-center mb-2 time-range';
-
-    const inputStart = document.createElement('input');
-    inputStart.type = 'time';
-    inputStart.className = 'form-control form-control-sm me-2 range-start';
-    inputStart.value = start;
-
-    const dash = document.createElement('span');
-    dash.className = 'me-2';
-    dash.textContent = '—';
-
-    const inputEnd = document.createElement('input');
-    inputEnd.type = 'time';
-    inputEnd.className = 'form-control form-control-sm me-2 range-end';
-    inputEnd.value = end;
-
-    const btnRemove = document.createElement('button');
-    btnRemove.type = 'button';
-    btnRemove.className = 'btn btn-sm btn-outline-danger';
-    btnRemove.innerHTML = '<i class="bi bi-trash"></i>';
-    btnRemove.onclick = function() { removeRange(btnRemove); };
-
-    wrapper.appendChild(inputStart);
-    wrapper.appendChild(dash);
-    wrapper.appendChild(inputEnd);
-    wrapper.appendChild(btnRemove);
-
-    container.appendChild(wrapper);
-  }
-
-  function removeRange(buttonEl) {
-    const wrapper = buttonEl.closest('.time-range');
-    if (wrapper) wrapper.remove();
-  }
-
-  // Serializa os ranges para um objeto e coloca no input hidden como JSON
-  function serializeAvailability() {
-    const obj = {};
-    for (const day of DAYS) {
-      const dayContainer = document.getElementById(`day-${day}`);
-      const ranges = [];
-      if (!dayContainer) { obj[day] = ranges; continue; }
-
-      const wrappers = dayContainer.querySelectorAll('.time-range');
-      wrappers.forEach(w => {
-        const startInput = w.querySelector('.range-start');
-        const endInput = w.querySelector('.range-end');
-        const startVal = startInput ? startInput.value : '';
-        const endVal = endInput ? endInput.value : '';
-        if (startVal && endVal) {
-          // armazenar como HH:MM
-          ranges.push({ start: startVal, end: endVal });
-        }
-      });
-      obj[day] = ranges;
-    }
-    document.getElementById('availabilityInput').value = JSON.stringify(obj);
-    return obj;
-  }
-
-  // Ao submeter o formulário, serializa antes de enviar
-  document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', function (e) {
-      // serializa (substitui o valor do campo hidden)
-      serializeAvailability();
-      // aqui não prevenimos o submit; o form segue
-    });
-  });
-
-  // Se quiser popular dynamicamente (ex: caso o navegador não tenha preenchido os inputs via Jinja)
-  // podemos tentar ler o input hidden e renderizar os ranges ao carregar
+  // adiciona o handler do botão de prévia
   document.addEventListener('DOMContentLoaded', function () {
-    try {
-      const hidden = document.getElementById('availabilityInput');
-      if (hidden && hidden.value) {
-        const parsed = JSON.parse(hidden.value);
-        for (const day of DAYS) {
-          if (parsed[day] && Array.isArray(parsed[day])) {
-            parsed[day].forEach(r => {
-              // adiciona um range já preenchido
-              addRange(day, r.start || '', r.end || '');
-            });
-          }
+    const previewBtn = document.getElementById('previewBtn');
+    if (!previewBtn) return;
+
+    previewBtn.addEventListener('click', async function () {
+      try {
+        // atualiza o hidden de availability com o que está na tela
+        serializeAvailability();
+
+        const form = document.querySelector('form');
+        const fd = new FormData(form);
+
+        const resp = await fetch('{{ url_for("perfil.perfil_preview") }}', {
+          method: 'POST',
+          body: fd,
+          credentials: 'same-origin'
+        });
+        if (!resp.ok) {
+          alert('Erro ao gerar prévia. (' + resp.status + ')');
+          return;
         }
+        const html = await resp.text();
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } catch (err) {
+        console.error('Erro na prévia', err);
+        alert('Erro ao gerar prévia.');
       }
-    } catch (err) {
-      // se parse falhar, ignora
-      console.log('Nenhuma disponibilidade pré-carregada ou JSON inválido.');
-    }
+    });
   });
 </script>
 

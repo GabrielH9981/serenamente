@@ -113,6 +113,22 @@
                     <p>{{ profile.full_bio }}</p>
                 {% endif %}
 
+                {# Vídeo de apresentação (YouTube) - só renderiza se houver embed válido #}
+                {% if profile.video_embed_url %}
+                  <div class="mt-3">
+                    <h4 class="section-title"><i class="bi bi-youtube"></i>Apresentação em Vídeo</h4>
+                    <div class="ratio ratio-16x9 rounded" style="overflow:hidden;">
+                      <iframe
+                        src="{{ profile.video_embed_url }}"
+                        title="Vídeo de apresentação"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                        style="border:0;">
+                      </iframe>
+                    </div>
+                  </div>
+                {% endif %}
+
                 {% if abordagens %}
                     <h4 class="section-title"><i class="bi bi-lightbulb me-2"></i>Abordagens Terapêuticas</h4>
                     {% for a in abordagens %}

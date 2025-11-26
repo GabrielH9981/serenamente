@@ -1,11 +1,11 @@
 # routes/psicologos.py
 from flask import Blueprint, render_template, request, session
 from db.db import get_db_connection
-from datetime import datetime, timedelta
 import math
 import random
-import json
 from datetime import datetime, timedelta, date, time as dt_time, timezone
+import re
+from urllib.parse import urlparse, parse_qs
 
 psicologos_bp = Blueprint('psicologos', __name__)
 
@@ -182,6 +182,16 @@ def perfil_publico(profile_id):
         WHERE p.id = %s
     """, (profile_id,))
     profile = cursor.fetchone()
+
+    # calcula video embed (se houver)
+    profile_video_url = profile.get('video_url') if profile else None
+    video_embed = youtube_embed_from_url(profile_video_url)
+    # adiciona ao dict para o template
+    if profile is not None:
+        profile['video_embed_url'] = video_embed
+    else:
+        profile = {'video_embed_url': video_embed}
+
     if not profile:
         cursor.close(); conn.close()
         return "Perfil não encontrado", 404
@@ -310,3 +320,48 @@ def perfil_publico(profile_id):
                            current_page=page,
                            total_pages=total_pages,
                            current_page_days=current_page_days)
+
+
+def youtube_embed_from_url(url):
+    """
+    Recebe um link do YouTube em vários formatos e devolve a URL de embed:
+      - https://www.youtube.com/watch?v=VIDEOID
+      - https://youtu.be/VIDEOID
+      - https://www.youtube.com/embed/VIDEOID
+    Retorna None se não reconhecer.
+    """
+    if not url:
+        return None
+    u = url.strip()
+    try:
+        parsed = urlparse(u)
+        host = parsed.netloc.lower()
+        # youtu.be short link
+        if 'youtu.be' in host:
+            vid = parsed.path.lstrip('/')
+            if vid:
+                return f"https://www.youtube.com/embed/{vid}"
+            return None
+        # youtube.com watch?v=VIDEOID
+        if 'youtube.com' in host:
+            # if /watch?v=
+            if parsed.path == '/watch':
+                qs = parse_qs(parsed.query)
+                vid_list = qs.get('v')
+                if vid_list:
+                    return f"https://www.youtube.com/embed/{vid_list[0]}"
+            # if /embed/VIDEOID
+            m = re.search(r'/embed/([^/?&]+)', parsed.path)
+            if m:
+                return f"https://www.youtube.com/embed/{m.group(1)}"
+            # sometimes path is /v/VIDEOID
+            m2 = re.search(r'/v/([^/?&]+)', parsed.path)
+            if m2:
+                return f"https://www.youtube.com/embed/{m2.group(1)}"
+        # fallback: try regex for common id pattern
+        m3 = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11})(?:&|$)', u)
+        if m3:
+            return f"https://www.youtube.com/embed/{m3.group(1)}"
+    except Exception:
+        return None
+    return None
