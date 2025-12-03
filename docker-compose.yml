@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: serenamente_app
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"    # pode deixar assim e depois botar Nginx na frente
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+  db:
+    image: mysql:8.0
+    container_name: serenamente_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: super_senha_root
+      MYSQL_DATABASE: serenamente
+      MYSQL_USER: serenamente_user
+      MYSQL_PASSWORD: senha_forte
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

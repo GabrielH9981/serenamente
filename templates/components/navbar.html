@@ -33,14 +33,6 @@
                   Agenda
                 </a>
               </li>
-              <!-- opção genérica comentada para adicionar no futuro -->
-              <!--
-              <li>
-                <a class="dropdown-item" href="/outra-ferramenta">
-                  Outra Ferramenta (exemplo)
-                </a>
-              </li>
-              -->
             </ul>
           </li>
 
@@ -54,13 +46,23 @@
             </ul>
           </li>
 
-          <!-- Ícone de notificações -->
-          <li class="nav-item">
-            <a class="nav-link text-white" href="{{ url_for('notificacoes.listar_notificacoes') }}">
+          <!-- SININHO DE NOTIFICAÇÕES -->
+          <li class="nav-item me-2 position-relative">
+            <a class="nav-link text-white position-relative"
+               href="{{ url_for('notificacoes.listar_notificacoes') }}">
+              <!-- Ícone do sino -->
               <i class="bi bi-bell"></i>
+
+              {# Badge só aparece se tiver notificações pendentes #}
+              {% if notif_count and notif_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {{ notif_count if notif_count < 10 else '9+' }}
+                </span>
+              {% endif %}
             </a>
           </li>
         {% else %}
+
           <li class="nav-item">
             <a class="btn btn-light text-primary fw-semibold ms-3" href="/login" style="border-radius: 20px;">
               Login
@@ -86,20 +88,10 @@
     {% if session.get('user_id') %}
       <hr>
 
-      <!-- Ícone de notificações -->
-      <a href="{{ url_for('notificacoes.listar_notificacoes') }}" class="nav-link mb-2">
-        <i class="bi bi-bell"></i> Notificações
-      </a>
-      <hr>
-
       <!-- Ferramentas no mobile: lista simples com opções (fácil de editar) -->
-      <div class="mb-2">
+      <div class="mb-2 mt-2">
         <div class="fw-bold mb-1">Ferramentas</div>
         <a href="{{ url_for('ferramentas.ferramentas_home') }}" class="nav-link ps-3">Agenda</a>
-        <!-- opção genérica comentada para adicionar no futuro -->
-        <!--
-        <a href="/outra-ferramenta" class="nav-link ps-3">Outra Ferramenta (exemplo)</a>
-        -->
       </div>
 
       <a href="/perfil" class="nav-link">Editar Perfil</a>
@@ -109,5 +101,13 @@
         Login
       </a>
     {% endif %}
+
+    <!-- Notificações no mobile -->
+      <a href="{{ url_for('notificacoes.listar_notificacoes') }}" class="nav-link mb-2 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-bell me-1"></i> Notificações</span>
+        {% if notif_count and notif_count > 0 %}
+          <span class="badge bg-danger rounded-pill">{{ notif_count }}</span>
+        {% endif %}
+      </a>
   </div>
 </div>

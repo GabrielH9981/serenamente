@@ -299,3 +299,30 @@ def acao_notificacao():
     cursor.close()
     conn.close()
     return redirect(url_for('notificacoes.listar_notificacoes'))
+
+
+@notificacoes_bp.route('/notificacoes/limpar', methods=['POST'])
+def limpar_todas_notificacoes():
+    """
+    Marca todas as notificações pendentes do psicólogo logado como 'cancelado'.
+    Usado pelo botão 'Limpar todas'.
+    """
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE notificacoes_agenda
+            SET status = 'cancelado'
+            WHERE user_id = %s AND status = 'pendente'
+        """, (session['user_id'],))
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('notificacoes.listar_notificacoes'))
+
