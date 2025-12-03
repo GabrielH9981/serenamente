@@ -192,6 +192,13 @@ def perfil_publico(profile_id):
     else:
         profile = {'video_embed_url': video_embed}
 
+    # modo de agendamento (default = manual)
+    scheduling_mode = profile.get('scheduling_mode') or 'manual'
+    if scheduling_mode not in ('none', 'manual', 'auto'):
+        scheduling_mode = 'manual'
+    profile['scheduling_mode'] = scheduling_mode
+
+
     if not profile:
         cursor.close(); conn.close()
         return "Perfil não encontrado", 404
@@ -251,48 +258,48 @@ def perfil_publico(profile_id):
     start_date = date.today()
 
     all_days = []
-    for offset in range(window_days):
-        d = start_date + timedelta(days=offset)
-        py_weekday = d.weekday()  # 0=Mon
-        weekday_key = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'][py_weekday]
-        ranges = availability.get(weekday_key, [])
-        slots = []
-        for r in ranges:
-            try:
-                s_raw = r.get('start') or '00:00'
-                e_raw = r.get('end') or '00:00'
-                s_h, s_m = map(int, s_raw.split(':'))
-                e_h, e_m = map(int, e_raw.split(':'))
-                first_hour = s_h + (1 if s_m > 0 else 0)
-                last_start = e_h - 1 if e_m == 0 else e_h
-                for hour in range(first_hour, last_start + 1):
-                    # build slot start/end in psychologist's local timezone: assume -03:00 (America/Sao_Paulo)
-                    # Create aware dt with tz offset -03:00 then get UTC timestamp
-                    tz_offset = timedelta(hours=-3)
-                    slot_start_local = datetime.combine(d, dt_time(hour=hour, minute=0, tzinfo=timezone(tz_offset)))
-                    slot_end_local = slot_start_local + timedelta(hours=1)
-                    slot_start_ts = int(slot_start_local.astimezone(timezone.utc).timestamp())
-                    slot_end_ts = int(slot_end_local.astimezone(timezone.utc).timestamp())
 
-                    # check conflict using timestamps
-                    if slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, busy_events_ts):
-                        continue
+    # só gera agendas se o modo NÃO for "none"
+    if scheduling_mode != 'none':
+        for offset in range(window_days):
+            d = start_date + timedelta(days=offset)
+            py_weekday = d.weekday()  # 0=Mon
+            weekday_key = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][py_weekday]
+            ranges = availability.get(weekday_key, [])
+            slots = []
+            for r in ranges:
+                try:
+                    s_raw = r.get('start') or '00:00'
+                    e_raw = r.get('end') or '00:00'
+                    s_h, s_m = map(int, s_raw.split(':'))
+                    e_h, e_m = map(int, e_raw.split(':'))
+                    first_hour = s_h + (1 if s_m > 0 else 0)
+                    last_start = e_h - 1 if e_m == 0 else e_h
+                    for hour in range(first_hour, last_start + 1):
+                        tz_offset = timedelta(hours=-3)
+                        slot_start_local = datetime.combine(d, dt_time(hour=hour, minute=0, tzinfo=timezone(tz_offset)))
+                        slot_end_local = slot_start_local + timedelta(hours=1)
+                        slot_start_ts = int(slot_start_local.astimezone(timezone.utc).timestamp())
+                        slot_end_ts = int(slot_end_local.astimezone(timezone.utc).timestamp())
 
-                    slots.append({
-                        'time': f"{hour:02d}:00",
-                        'start_iso': slot_start_local.isoformat(),
-                        'start_ts': slot_start_ts
-                    })
-            except Exception as e:
-                print("Erro gerando slots:", e, r)
-                continue
+                        if slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, busy_events_ts):
+                            continue
 
-        all_days.append({
-            'date': d.isoformat(),
-            'weekday': weekday_key,
-            'label': d.strftime('%a %d/%m'),
-            'slots': slots
-        })
+                        slots.append({
+                            'time': f"{hour:02d}:00",
+                            'start_iso': slot_start_local.isoformat(),
+                            'start_ts': slot_start_ts
+                        })
+                except Exception as e:
+                    print("Erro gerando slots:", e, r)
+                    continue
+
+            all_days.append({
+                'date': d.isoformat(),
+                'weekday': weekday_key,
+                'label': d.strftime('%a %d/%m'),
+                'slots': slots
+            })
 
     # pages
     pages = [ all_days[i:i+page_size] for i in range(0, len(all_days), page_size) ]

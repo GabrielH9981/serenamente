@@ -53,6 +53,13 @@
               <li><a class="dropdown-item" href="/logout">Sair</a></li>
             </ul>
           </li>
+
+          <!-- Ícone de notificações -->
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{{ url_for('notificacoes.listar_notificacoes') }}">
+              <i class="bi bi-bell"></i>
+            </a>
+          </li>
         {% else %}
           <li class="nav-item">
             <a class="btn btn-light text-primary fw-semibold ms-3" href="/login" style="border-radius: 20px;">
@@ -78,6 +85,13 @@
 
     {% if session.get('user_id') %}
       <hr>
+
+      <!-- Ícone de notificações -->
+      <a href="{{ url_for('notificacoes.listar_notificacoes') }}" class="nav-link mb-2">
+        <i class="bi bi-bell"></i> Notificações
+      </a>
+      <hr>
+
       <!-- Ferramentas no mobile: lista simples com opções (fácil de editar) -->
       <div class="mb-2">
         <div class="fw-bold mb-1">Ferramentas</div>

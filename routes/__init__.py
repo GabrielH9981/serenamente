@@ -5,6 +5,7 @@ from .psicologos import psicologos_bp
 from .ativacao import ativacao_bp
 from .admin import admin_bp
 from .ferramentas import ferramentas_bp
+from routes.notificacoes import notificacoes_bp
 
 
 def register_routes(app, oauth=None):
@@ -19,3 +20,4 @@ def register_routes(app, oauth=None):
     app.register_blueprint(ativacao_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(ferramentas_bp)
+    app.register_blueprint(notificacoes_bp)

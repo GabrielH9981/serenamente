@@ -154,6 +154,12 @@ def perfil():
         full_bio = trunc(request.form.get('full_bio') or '', MAX_FULL_BIO)
         website_url = trunc(request.form.get('website_url') or '', MAX_WEBSITE)
 
+        # modo de agendamento
+        scheduling_mode = request.form.get('scheduling_mode') or 'manual'
+        if scheduling_mode not in ('none', 'manual', 'auto'):
+            scheduling_mode = 'manual'
+
+
         # monta dicionário data (substitui os campos anteriores)
         data = {
             'short_bio': short_bio,
@@ -174,7 +180,8 @@ def perfil():
             'pres_numero': pres_numero,
             'linkedin_url': linkedin_url,
             'tiktok_url': tiktok_url,
-            'availability': availability_json
+            'availability': availability_json,
+            'scheduling_mode': scheduling_mode
         }
 
         if profile:
@@ -198,7 +205,8 @@ def perfil():
                     pres_numero=%s,
                     linkedin_url=%s,
                     tiktok_url=%s,
-                    availability=%s
+                    availability=%s,
+                    scheduling_mode=%s
                 WHERE user_id=%s
             """, (
                 data['short_bio'], data['full_bio'], data['profile_picture_url'], data['location'],
@@ -208,6 +216,7 @@ def perfil():
                 data['pres_estado'], data['pres_rua'], data['pres_numero'],
                 data['linkedin_url'], data['tiktok_url'],
                 data['availability'],
+                data['scheduling_mode'],
                 session['user_id']
             ))
         else:
@@ -217,7 +226,7 @@ def perfil():
                     price_range, atendimento_online, atendimento_presencial,
                     whatsapp_number, instagram_url, website_url,
                     online_estado, pres_cep, pres_cidade, pres_estado, pres_rua, pres_numero,
-                    linkedin_url, tiktok_url, availability
+                    linkedin_url, tiktok_url, availability, scheduling_mode
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 session['user_id'], data['short_bio'], data['full_bio'], data['profile_picture_url'],
@@ -227,7 +236,7 @@ def perfil():
                 data['online_estado'], data['pres_cep'], data['pres_cidade'],
                 data['pres_estado'], data['pres_rua'], data['pres_numero'],
                 data['linkedin_url'], data['tiktok_url'],
-                data['availability']
+                data['availability'], data['scheduling_mode']
             ))
 
             conn.commit()
@@ -347,6 +356,12 @@ def perfil_preview():
         profile_temp['profile_picture_url'] = cropped
     else:
         profile_temp['profile_picture_url'] = dbrow.get('profile_picture_url') or ''
+
+    # modo de agendamento (form > banco > default)
+    scheduling_mode = request.form.get('scheduling_mode') or dbrow.get('scheduling_mode') or 'manual'
+    if scheduling_mode not in ('none', 'manual', 'auto'):
+        scheduling_mode = 'manual'
+    profile_temp['scheduling_mode'] = scheduling_mode
 
     profile_temp['short_bio'] = safe(request.form.get('short_bio') or dbrow.get('short_bio') or '', 160)
     profile_temp['full_bio'] = safe(request.form.get('full_bio') or dbrow.get('full_bio') or '', 3000)
@@ -471,47 +486,50 @@ def perfil_preview():
     start_date = date.today()
 
     all_days = []
-    for offset in range(window_days):
-        d = start_date + timedelta(days=offset)
-        py_weekday = d.weekday()
-        weekday_key = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'][py_weekday]
-        ranges = availability_obj.get(weekday_key, []) if isinstance(availability_obj, dict) else []
-        slots = []
-        for r in ranges:
-            try:
-                s_raw = r.get('start') or '00:00'
-                e_raw = r.get('end') or '00:00'
-                s_h, s_m = map(int, s_raw.split(':'))
-                e_h, e_m = map(int, e_raw.split(':'))
-                first_hour = s_h + (1 if s_m > 0 else 0)
-                last_start = e_h - 1 if e_m == 0 else e_h
-                for hour in range(first_hour, last_start + 1):
-                    tz_offset = timedelta(hours=-3)
-                    slot_start_local = datetime.datetime.combine(
-                        d, dt_time(hour=hour, minute=0, tzinfo=timezone(tz_offset))
-                    )
-                    slot_end_local = slot_start_local + timedelta(hours=1)
-                    slot_start_ts = int(slot_start_local.astimezone(timezone.utc).timestamp())
-                    slot_end_ts = int(slot_end_local.astimezone(timezone.utc).timestamp())
 
-                    if psic_mod.slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, busy_events_ts):
-                        continue
+    # se o psicólogo optou por NÃO DEFINIR HORÁRIOS, não gera slots
+    if scheduling_mode != 'none':
+        for offset in range(window_days):
+            d = start_date + timedelta(days=offset)
+            py_weekday = d.weekday()
+            weekday_key = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][py_weekday]
+            ranges = availability_obj.get(weekday_key, []) if isinstance(availability_obj, dict) else []
+            slots = []
+            for r in ranges:
+                try:
+                    s_raw = r.get('start') or '00:00'
+                    e_raw = r.get('end') or '00:00'
+                    s_h, s_m = map(int, s_raw.split(':'))
+                    e_h, e_m = map(int, e_raw.split(':'))
+                    first_hour = s_h + (1 if s_m > 0 else 0)
+                    last_start = e_h - 1 if e_m == 0 else e_h
+                    for hour in range(first_hour, last_start + 1):
+                        tz_offset = timedelta(hours=-3)
+                        slot_start_local = datetime.datetime.combine(
+                            d, dt_time(hour=hour, minute=0, tzinfo=timezone(tz_offset))
+                        )
+                        slot_end_local = slot_start_local + timedelta(hours=1)
+                        slot_start_ts = int(slot_start_local.astimezone(timezone.utc).timestamp())
+                        slot_end_ts = int(slot_end_local.astimezone(timezone.utc).timestamp())
 
-                    slots.append({
-                        'time': f"{hour:02d}:00",
-                        'start_iso': slot_start_local.isoformat(),
-                        'start_ts': slot_start_ts
-                    })
-            except Exception as e:
-                print("Erro gerando slots (preview):", e, r)
-                continue
+                        if psic_mod.slot_conflicts_with_events_ts(slot_start_ts, slot_end_ts, busy_events_ts):
+                            continue
 
-        all_days.append({
-            'date': d.isoformat(),
-            'weekday': weekday_key,
-            'label': d.strftime('%a %d/%m'),
-            'slots': slots
-        })
+                        slots.append({
+                            'time': f"{hour:02d}:00",
+                            'start_iso': slot_start_local.isoformat(),
+                            'start_ts': slot_start_ts
+                        })
+                except Exception as e:
+                    print("Erro gerando slots (preview):", e, r)
+                    continue
+
+            all_days.append({
+                'date': d.isoformat(),
+                'weekday': weekday_key,
+                'label': d.strftime('%a %d/%m'),
+                'slots': slots
+            })
 
     pages = [all_days[i:i+page_size] for i in range(0, len(all_days), page_size)]
     total_pages = len(pages)

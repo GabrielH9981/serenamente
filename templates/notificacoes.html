@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Plataforma da Aline</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS & JS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+</head>
+
+<body>
+
+    {% include 'components/navbar.html' %}
+
+    {% block content %}
+    <div class="container py-4">
+      <h2 class="mb-4">Notificações de agendamento</h2>
+
+      {% if notificacoes %}
+        <div class="list-group">
+          {% for n in notificacoes %}
+            <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+              <div>
+                <div><strong>{{ n.paciente_nome }}</strong> ({{ n.paciente_telefone }})</div>
+                <div class="small text-muted">
+                  Interesse em sessão em {{ n.data }} às {{ n.hora }} — Status: {{ n.status }}
+                </div>
+                {% if n.scheduling_mode == 'auto' %}
+                  <div class="small text-success mt-1">
+                    Este horário já foi adicionado automaticamente à sua Google Agenda.
+                  </div>
+                {% endif %}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                {# Botão "Agendar sessão" só aparece se NÃO for modo auto #}
+                {% if n.scheduling_mode != 'auto' %}
+                  <form method="POST" action="{{ url_for('notificacoes.acao_notificacao') }}">
+                    <input type="hidden" name="notif_id" value="{{ n.id }}">
+                    <input type="hidden" name="acao" value="agendar">
+                    <button class="btn btn-sm btn-success" type="submit">Agendar sessão</button>
+                  </form>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('notificacoes.acao_notificacao') }}" target="_blank">
+                  <input type="hidden" name="notif_id" value="{{ n.id }}">
+                  <input type="hidden" name="acao" value="conversar">
+                  <button class="btn btn-sm btn-primary" type="submit">Conversar com o paciente</button>
+                </form>
+
+                <form method="POST" action="{{ url_for('notificacoes.acao_notificacao') }}">
+                  <input type="hidden" name="notif_id" value="{{ n.id }}">
+                  <input type="hidden" name="acao" value="cancelar">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Cancelar</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Você não tem notificações no momento.</p>
+      {% endif %}
+    </div>
+    {% endblock %}
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Plataforma da Aline. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

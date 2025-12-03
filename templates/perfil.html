@@ -211,6 +211,28 @@
             </div>
         </div>
 
+
+        <!-- Configuração de agendamento -->
+        <div class="form-section mt-4">
+          <label class="form-label">Configuração de agendamento</label>
+          <select name="scheduling_mode" id="schedulingMode" class="form-select">
+            <option value="none" {% if profile.scheduling_mode == 'none' %}selected{% endif %}>
+              NÃO DEFINIR HORÁRIOS DE DISPONIBILIDADE
+            </option>
+            <option value="manual" {% if profile.scheduling_mode in [None, '', 'manual'] %}selected{% endif %}>
+              SEM AGENDAMENTO AUTOMÁTICO
+            </option>
+            <option value="auto" {% if profile.scheduling_mode == 'auto' %}selected{% endif %}>
+              COM AGENDAMENTO AUTOMÁTICO
+            </option>
+          </select>
+          <div class="small text-muted mt-1">
+            <strong>NÃO DEFINIR HORÁRIOS</strong>: não mostra agenda no perfil público.<br>
+            <strong>SEM AGENDAMENTO AUTOMÁTICO</strong>: paciente solicita, você decide na aba de notificações.<br>
+            <strong>COM AGENDAMENTO AUTOMÁTICO</strong>: paciente solicita, o horário já entra na sua Google Agenda automaticamente.
+          </div>
+        </div>
+
         <!-- Horários disponíveis -->
         <div class="form-section mt-4">
           <h4>Horários disponíveis</h4>
@@ -655,6 +677,25 @@
 
     document.addEventListener('DOMContentLoaded', function () {
       attachCharCounters();
+
+        // --- Exibir ou esconder seção de horários conforme modo de agendamento ---
+        const schedulingSelect = document.getElementById('schedulingMode');
+        const availabilitySection = document.getElementById('availabilitySection');
+
+        function updateSchedulingVisibility() {
+          if (!schedulingSelect || !availabilitySection) return;
+          const mode = schedulingSelect.value || 'manual';
+          if (mode === 'none') {
+            availabilitySection.classList.add('d-none');
+          } else {
+            availabilitySection.classList.remove('d-none');
+          }
+        }
+
+        if (schedulingSelect) {
+          schedulingSelect.addEventListener('change', updateSchedulingVisibility);
+          updateSchedulingVisibility(); // chamada inicial
+        }
     });
 
     // ---------- Preview via AJAX (POST) - usa rota /perfil/preview ----------

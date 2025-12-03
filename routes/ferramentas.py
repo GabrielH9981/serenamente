@@ -658,3 +658,74 @@ def editar_evento_agenda():
             return jsonify({"success": False, "error": str(e)}), 500
         except:
             return jsonify({"success": False, "error": "unknown"}), 500
+
+
+def criar_evento_agenda_for_user(user_id, titulo, data, hora_inicio, hora_fim=None, descricao=''):
+    """
+    Cria um evento na Google Agenda de um usuário específico (usado no fluxo público).
+    Retorna (True, response_json) em caso de sucesso, ou (False, erro) em caso de falha.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT google_cal_access_token
+            FROM users
+            WHERE id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+    finally:
+        cursor.close()
+        conn.close()
+
+    if not user or not user.get('google_cal_access_token'):
+        return False, "no_token"
+
+    access_token = user['google_cal_access_token']
+    tz = 'America/Sao_Paulo'
+
+    try:
+        start_dt = datetime.datetime.fromisoformat(f"{data}T{hora_inicio}:00")
+        if hora_fim:
+            end_dt = datetime.datetime.fromisoformat(f"{data}T{hora_fim}:00")
+        else:
+            end_dt = start_dt + datetime.timedelta(minutes=50)
+
+        start_iso = start_dt.strftime("%Y-%m-%dT%H:%M:%S-03:00")
+        end_iso = end_dt.strftime("%Y-%m-%dT%H:%M:%S-03:00")
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        body = {
+            "summary": titulo,
+            "description": descricao or "",
+            "start": {"dateTime": start_iso, "timeZone": tz},
+            "end":   {"dateTime": end_iso,   "timeZone": tz}
+        }
+
+        resp = requests.post(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            headers=headers,
+            json=body,
+            timeout=10
+        )
+
+        if resp.status_code == 401:
+            print("criar_evento_agenda_for_user: 401 - tentando refresh...")
+            refreshed = refresh_google_tokens(user_id)
+            if refreshed and refreshed.get('access_token'):
+                headers["Authorization"] = f"Bearer {refreshed['access_token']}"
+                resp = requests.post(
+                    "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                    headers=headers,
+                    json=body,
+                    timeout=10
+                )
+
+        resp.raise_for_status()
+        return True, resp.json()
+    except Exception as e:
+        print("Erro ao criar evento automático na agenda:", e)
+        return False, str(e)
