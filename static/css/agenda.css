@@ -138,3 +138,49 @@ body { font-family: 'Inter', sans-serif; background: #f4f4fb; }
 
 /* garante que os números do dia fiquem sempre visíveis */
 .day-number { z-index: 5; }
+
+/* --- MOBILE: Agenda Semanal --- */
+
+.week-view {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.week-day-card {
+    background: #fafafa;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #eee;
+}
+
+.week-day-header {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.week-events {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.week-event-pill {
+    background: #6c63ff;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.week-empty {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #999;
+}

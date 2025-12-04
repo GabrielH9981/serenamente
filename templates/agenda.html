@@ -22,62 +22,64 @@
 
     {% if calendar_connected %}
 
-        <!-- Navegação entre meses -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <a class="btn btn-outline-primary"
-               href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ prev_year }}&mes={{ prev_month }}">
-                <i class="bi bi-chevron-left"></i> Mês anterior
-            </a>
+    <!-- 🔹 Navegação de mês (desktop) -->
+    <div class="d-none d-md-flex justify-content-between align-items-center mb-3">
+        <a class="btn btn-outline-primary"
+           href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ prev_year }}&mes={{ prev_month }}">
+            <i class="bi bi-chevron-left"></i> Mês anterior
+        </a>
 
-            <h4 class="mb-0 fw-semibold">{{ month_label }}</h4>
+        <h4 class="mb-0 fw-semibold">{{ month_label }}</h4>
 
-            <a class="btn btn-outline-primary"
-               href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ next_year }}&mes={{ next_month }}">
-                Próximo mês <i class="bi bi-chevron-right"></i>
-            </a>
+        <a class="btn btn-outline-primary"
+           href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ next_year }}&mes={{ next_month }}">
+            Próximo mês <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+
+    <!-- 🔹 Navegação de semana (mobile) -->
+    <div class="d-flex d-md-none justify-content-between align-items-center mb-3">
+        <button class="btn btn-outline-primary" id="weekPrev"><i class="bi bi-chevron-left"></i></button>
+        <h5 id="weekLabel" class="fw-semibold mb-0">Semana atual</h5>
+        <button class="btn btn-outline-primary" id="weekNext"><i class="bi bi-chevron-right"></i></button>
+    </div>
+
+
+    <!-- 🔹 Agenda Mensal (apenas desktop) -->
+    <div class="calendar-container d-none d-md-block">
+
+        <div class="calendar-grid fw-bold text-center">
+            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div>
+            <div>Qui</div><div>Sex</div><div>Sáb</div>
         </div>
 
-        <div class="calendar-container">
+        <div class="calendar-grid mt-2">
+            {% for day in calendar_days %}
+              <div class="day-box" data-date="{{ day.date }}" onclick="openModal('{{ day.date }}')">
+                <div class="day-number {% if day.is_today %}text-primary{% endif %}">
+                    {{ day.day }}
+                </div>
 
-            <!-- Cabeçalho dos dias -->
-            <div class="calendar-grid fw-bold text-center">
-                <div>Dom</div>
-                <div>Seg</div>
-                <div>Ter</div>
-                <div>Qua</div>
-                <div>Qui</div>
-                <div>Sex</div>
-                <div>Sáb</div>
-            </div>
-
-            <!-- Dias -->
-            <div class="calendar-grid mt-2">
-
-                {% for day in calendar_days %}
-                  <div class="day-box" data-date="{{ day.date }}" onclick="openModal('{{ day.date }}')">
-                    <div class="day-number {% if day.is_today %}text-primary{% endif %}">
-                        {{ day.day }}
-                    </div>
-
-                    <!-- container onde os pills serão injetados via JS -->
-                    <div class="day-events-container mt-2">
-                        <!-- conteúdo inicial (será substituído pelo JS ao carregar a página) -->
-                        {% for ev in day.events[:2] %}
-                            <div class="event-pill" title="{{ ev.summary }}">
-                                {{ ev.time }} {{ ev.summary }}
-                            </div>
-                        {% endfor %}
-                        {% if day.events|length > 2 %}
-                            <div class="event-pill more-pill" title="Abrir lista completa" onclick="openModal('{{ day.date }}'); event.stopPropagation();">
-                                +{{ day.events|length - 2 }} Mais
-                            </div>
-                        {% endif %}
-                    </div>
-                  </div>
-                {% endfor %}
-
-            </div>
+                <div class="day-events-container mt-2">
+                    {% for ev in day.events[:2] %}
+                        <div class="event-pill" title="{{ ev.summary }}">
+                            {{ ev.time }} {{ ev.summary }}
+                        </div>
+                    {% endfor %}
+                    {% if day.events|length > 2 %}
+                        <div class="event-pill more-pill"
+                             onclick="openModal('{{ day.date }}'); event.stopPropagation();">
+                            +{{ day.events|length - 2 }} Mais
+                        </div>
+                    {% endif %}
+                </div>
+              </div>
+            {% endfor %}
         </div>
+    </div>
+
+    <!-- 🔹 Agenda Semanal (apenas mobile) -->
+    <div class="week-view d-md-none" id="weekView"></div>
 
     {% else %}
         <!-- Não conectado -->
@@ -138,6 +140,100 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const weekContainer = document.getElementById("weekView");
+    const weekLabel = document.getElementById("weekLabel");
+
+    if (!weekContainer || !weekLabel) return;
+
+    // Dados de todos os dias do mês vindos do backend
+    const allDays = [
+        {% for d in calendar_days %}
+            {
+                date: "{{ d.date }}",            // formato: YYYY-MM-DD
+                day: "{{ d.day }}",              // número do dia
+                events: [
+                    {% for ev in d.events %}
+                    { time: "{{ ev.time }}", summary: "{{ ev.summary }}" },
+                    {% endfor %}
+                ]
+            },
+        {% endfor %}
+    ];
+
+    let weekIndex = 0; // 0 = primeira semana, 1 = segunda, etc.
+
+    function formatDateBR(dateStr, includeYear = true) {
+        // "2025-12-03" -> "03/12/2025"
+        if (!dateStr) return "";
+        const [y, m, d] = dateStr.split("-");
+        return includeYear ? `${d}/${m}/${y}` : `${d}/${m}`;
+    }
+
+    function formatWeekday(dateStr) {
+        // "2025-12-03" -> "Quarta-feira"
+        if (!dateStr) return "";
+        const dt = new Date(dateStr + "T00:00:00");
+        let wd = dt.toLocaleDateString('pt-BR', { weekday: 'long' }); // "quarta-feira"
+        // Capitaliza a primeira letra
+        return wd.charAt(0).toUpperCase() + wd.slice(1);
+    }
+
+    function renderWeek() {
+        const start = weekIndex * 7;
+        const days = allDays.slice(start, start + 7);
+
+        if (days.length === 0) return;
+
+        // Label da semana em formato brasileiro
+        const first = days[0].date;
+        const last  = days[days.length - 1].date;
+        weekLabel.textContent = `${formatDateBR(first, false)} → ${formatDateBR(last, false)}`;
+
+        // Monta cards da semana
+        weekContainer.innerHTML = days.map(d => `
+            <div class="week-day-card" onclick="openModal('${d.date}')">
+                <div class="week-day-header">
+                  ${formatWeekday(d.date)} — ${formatDateBR(d.date, true)}
+                </div>
+
+                <div class="week-events">
+                    ${
+                        d.events && d.events.length
+                        ? d.events.map(ev => `
+                            <div class="week-event-pill">
+                              ${ev.time} ${ev.summary}
+                            </div>
+                          `).join("")
+                        : `<div class="week-empty">Sem eventos</div>`
+                    }
+                </div>
+            </div>
+        `).join("");
+    }
+
+    const prevBtn = document.getElementById("weekPrev");
+    const nextBtn = document.getElementById("weekNext");
+
+    if (prevBtn) {
+        prevBtn.onclick = function () {
+            if (weekIndex > 0) weekIndex--;
+            renderWeek();
+        };
+    }
+
+    if (nextBtn) {
+        nextBtn.onclick = function () {
+            if ((weekIndex + 1) * 7 < allDays.length) weekIndex++;
+            renderWeek();
+        };
+    }
+
+    renderWeek();
+});
+</script>
 
 <!-- Inline config gerado pelo servidor (URLs e outros valores dinâmicos) -->
 <script>

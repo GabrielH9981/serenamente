@@ -34,3 +34,34 @@ body {
 .profile-image:hover {
     transform: scale(1.04);
 }
+
+/* ---- Mini calendário responsivo em uma linha ---- */
+.mini-cal-grid {
+  display: grid;
+  grid-auto-flow: column;          /* só colunas, uma linha só */
+  grid-auto-columns: 50%;          /* mobile: 2 cards por vez */
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mini-day {
+  scroll-snap-align: start;
+  min-width: 0;                    /* deixa o conteúdo quebrar certinho */
+}
+
+/* tablet: ~3 cards por vez */
+@media (min-width: 576px) {
+  .mini-cal-grid {
+    grid-auto-columns: 33.3333%;
+  }
+}
+
+/* desktop: ~4 cards por vez */
+@media (min-width: 992px) {
+  .mini-cal-grid {
+    grid-auto-columns: 25%;
+  }
+}
