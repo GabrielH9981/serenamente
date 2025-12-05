@@ -68,30 +68,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.8/dist/inputmask.min.js"></script>
-<script>
-    Inputmask({"mask": "999.999.999-99"}).mask("#cpf");
-    Inputmask({"mask": "(99) 99999-9999"}).mask("input[name='whatsapp']");
-    Inputmask({"mask": "99/99999[9]", "greedy": false}).mask("#crp");
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const senhaInput = document.getElementById("senha");
-    const toggleSenhaBtn = document.getElementById("toggleSenha");
-    const senhaIcon = document.getElementById("senhaIcon");
-
-    toggleSenhaBtn.addEventListener("click", function () {
-        const isPassword = senhaInput.type === "password";
-
-        senhaInput.type = isPassword ? "text" : "password";
-
-        senhaIcon.src = isPassword
-            ? "{{ url_for('static', filename='img/hide.png') }}"
-            : "{{ url_for('static', filename='img/view.png') }}";
-
-        senhaIcon.alt = isPassword ? "ocultar senha" : "mostrar senha";
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/register.js') }}"></script>
 
 </body>
 </html>

@@ -215,7 +215,9 @@
         </div>
     </div>
 </div>
+<script src="{{ url_for('static', filename='js/perfil-publico.js') }}"></script>
 <script>
+  // Configurações específicas do template (dados dinâmicos do servidor)
   const profileId = {{ profile.id }};
   const calendarContainer = document.getElementById('calendarFragmentContainer');
 
