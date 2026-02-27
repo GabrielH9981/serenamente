@@ -25,14 +25,14 @@
     <!-- 🔹 Navegação de mês (desktop) -->
     <div class="d-none d-md-flex justify-content-between align-items-center mb-3">
         <a class="btn btn-outline-primary"
-           href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ prev_year }}&mes={{ prev_month }}">
+           href="{{ url_for('ferramentas.agenda') }}?ano={{ prev_year }}&mes={{ prev_month }}">
             <i class="bi bi-chevron-left"></i> Mês anterior
         </a>
 
         <h4 class="mb-0 fw-semibold">{{ month_label }}</h4>
 
         <a class="btn btn-outline-primary"
-           href="{{ url_for('ferramentas.ferramentas_home') }}?ano={{ next_year }}&mes={{ next_month }}">
+           href="{{ url_for('ferramentas.agenda') }}?ano={{ next_year }}&mes={{ next_month }}">
             Próximo mês <i class="bi bi-chevron-right"></i>
         </a>
     </div>
@@ -86,7 +86,7 @@
         <div class="p-4 bg-white shadow-sm rounded text-center">
             <h4 class="fw-bold mb-2">Google Agenda não conectada</h4>
             <p class="text-muted">Conecte sua agenda para visualizar seus compromissos.</p>
-            <a href="{{ url_for('ferramentas.conectar_google_calendar') }}" class="btn btn-primary">
+            <a href="{{ url_for('google_calendar.conectar') }}" class="btn btn-primary">
                 <i class="bi bi-google me-1"></i> Conectar Google Agenda
             </a>
         </div>
@@ -111,7 +111,7 @@
         <hr>
 
         <!-- Form de criação (envia para rota criar_evento_agenda) -->
-        <form method="post" action="{{ url_for('ferramentas.criar_evento_agenda') }}" id="createEventForm">
+        <form method="post" action="{{ url_for('google_calendar.criar_evento') }}" id="createEventForm">
           <input type="hidden" name="data" id="modalData">
 
           <div class="mb-3">
@@ -238,9 +238,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Inline config gerado pelo servidor (URLs e outros valores dinâmicos) -->
 <script>
   window.AGENDA_CONFIG = {
-    editarUrl: "{{ url_for('ferramentas.editar_evento_agenda') }}",
-    deletarUrl: "{{ url_for('ferramentas.deletar_evento_agenda') }}",
-    criarUrl: "{{ url_for('ferramentas.criar_evento_agenda') }}"
+    editarUrl: "{{ url_for('google_calendar.editar_evento') }}",
+    deletarUrl: "{{ url_for('google_calendar.deletar_evento') }}",
+    criarUrl: "{{ url_for('google_calendar.criar_evento') }}"
   };
 </script>
 

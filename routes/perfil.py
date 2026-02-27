@@ -236,7 +236,7 @@ def perfil():
                     whatsapp_number, instagram_url, website_url,
                     online_estado, pres_cep, pres_cidade, pres_estado, pres_rua, pres_numero,
                     linkedin_url, tiktok_url, availability, scheduling_mode
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 session['user_id'], data['short_bio'], data['full_bio'], data['profile_picture_url'],
                 data['location'], data['price_range'], data['atendimento_online'],

@@ -33,12 +33,29 @@ def verificar_dados_obrigatorios():
         'auth.login_google',
         'auth.auth_google_callback',
         'auth.completar_cadastro',
-        'auth.verificar_email',        # ✅ nova
-        'auth.enviar_codigo_email',    # ✅ nova
-        'ferramentas.conectar_google_calendar',  # ✅ novo
-        'ferramentas.google_calendar_callback',  # ✅ novo
+        'auth.verificar_email',
+        'auth.enviar_codigo_email',
         'auth.alterar_email',
+        'auth.logout',
+        'main.index',
+        'main.dashboard',
         'static'
+    }
+    
+    # Rotas que exigem email verificado
+    rotas_email_obrigatorio = {
+        'perfil.perfil',
+        'perfil.perfil_preview',
+        'ferramentas.ferramentas_home',
+        'ferramentas.agenda',
+        'ferramentas.conectar_google_calendar',
+        'ferramentas.google_calendar_callback',
+        'google_calendar.conectar',
+        'google_calendar.callback',
+        'google_calendar.desconectar',
+        'google_calendar.criar_evento',
+        'google_calendar.deletar_evento',
+        'google_calendar.editar_evento'
     }
 
     endpoint = request.endpoint
@@ -63,8 +80,8 @@ def verificar_dados_obrigatorios():
     if not user.get('crp') or not user.get('cpf') or not user.get('whatsapp_number'):
         return redirect(url_for('auth.completar_cadastro'))
 
-    # 2º: e-mail verificado
-    if not user.get('email_verified'):
+    # 2º: e-mail verificado (apenas para rotas específicas)
+    if endpoint in rotas_email_obrigatorio and not user.get('email_verified'):
         return redirect(url_for('auth.verificar_email'))
 
 
@@ -100,7 +117,7 @@ def login():
 def register():
     # Aplica rate limit se disponível
     if limiter:
-        limiter.limit("3 per hour")(lambda: None)()
+        limiter.limit("100 per hour")(lambda: None)()
     if 'user_id' in session:
         return render_template('index.html')
 
