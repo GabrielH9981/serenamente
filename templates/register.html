@@ -26,28 +26,34 @@
         <form method="post">
             <div class="mb-3">
                 <label class="form-label">Nome completo</label>
-                <input type="text" class="form-control" name="name" required>
+                <input type="text" class="form-control" name="name" 
+                       minlength="3" maxlength="100" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">E-mail</label>
-                <input type="email" class="form-control" name="email" required>
+                <input type="email" class="form-control" name="email" 
+                       placeholder="seu@email.com" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">CRP</label>
-                <input type="text" class="form-control" id="crp" name="crp" required>
+                <input type="text" class="form-control" id="crp" name="crp" 
+                       placeholder="06/123456" required>
             </div>
             <div class="mb-3">
                 <label for="cpf" class="form-label">CPF</label>
-                <input type="text" class="form-control" id="cpf" name="cpf" required>
+                <input type="text" class="form-control" id="cpf" name="cpf" 
+                       placeholder="123.456.789-09" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">WhatsApp (com DDD)</label>
-                <input type="text" class="form-control" name="whatsapp" required>
+                <input type="text" class="form-control" name="whatsapp" 
+                       placeholder="(11) 98765-4321" required>
             </div>
             <div class="mb-3">
                 <label class="form-label">Senha</label>
                 <div class="input-group">
-                    <input type="password" class="form-control" name="senha" id="senha" required>
+                    <input type="password" class="form-control" name="senha" id="senha" 
+                           minlength="6" required>
 
                     <button class="btn btn-outline-secondary d-flex align-items-center"
                             type="button" id="toggleSenha" style="background: #fff;">
@@ -68,6 +74,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.8/dist/inputmask.min.js"></script>
+<script src="{{ url_for('static', filename='js/validators.js') }}"></script>
 <script src="{{ url_for('static', filename='js/register.js') }}"></script>
 
 </body>

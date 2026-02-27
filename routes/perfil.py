@@ -11,6 +11,7 @@ import json
 from datetime import date, timedelta, time as dt_time, timezone
 from routes.ferramentas import refresh_google_tokens, get_events_from_calendar
 from routes import psicologos as psic_mod  # para reutilizar iso_to_utc_ts e comparadores
+from utils.validators import validar_telefone, validar_url, sanitizar_texto
 
 perfil_bp = Blueprint('perfil', __name__)
 
@@ -93,13 +94,13 @@ def perfil():
         MAX_NUMERO = 20
         MAX_AVAILABILITY_LENGTH = 15000  # máximo razoável para o JSON
 
-        # novos campos de endereço
-        online_estado = trunc(request.form.get('online_estado') or '', 2)
-        pres_cep = trunc(request.form.get('pres_cep') or '', 9)
-        pres_cidade = trunc(request.form.get('pres_cidade') or '', MAX_CIDADE)
-        pres_estado = trunc(request.form.get('pres_estado') or '', 2)
-        pres_rua = trunc(request.form.get('pres_rua') or '', MAX_RUA)
-        pres_numero = trunc(request.form.get('pres_numero') or '', MAX_NUMERO)
+    # novos campos de endereço (sanitizados)
+        online_estado = sanitizar_texto(trunc(request.form.get('online_estado') or '', 2))
+        pres_cep = sanitizar_texto(trunc(request.form.get('pres_cep') or '', 9))
+        pres_cidade = sanitizar_texto(trunc(request.form.get('pres_cidade') or '', MAX_CIDADE))
+        pres_estado = sanitizar_texto(trunc(request.form.get('pres_estado') or '', 2))
+        pres_rua = sanitizar_texto(trunc(request.form.get('pres_rua') or '', MAX_RUA))
+        pres_numero = sanitizar_texto(trunc(request.form.get('pres_numero') or '', MAX_NUMERO))
 
         atendimento_online = 1 if request.form.get('atendimento_online') else 0
         atendimento_presencial = 1 if request.form.get('atendimento_presencial') else 0
@@ -111,12 +112,10 @@ def perfil():
         elif atendimento_online and not atendimento_presencial and online_estado:
             location = online_estado
 
-        # novos campos sociais (truncados)
-        whatsapp_number = trunc(request.form.get('whatsapp_number') or '', MAX_WHATSAPP)
-
-        instagram_handle = trunc((request.form.get('instagram_handle') or '').strip(), MAX_HANDLE)
-        linkedin_handle = trunc((request.form.get('linkedin_handle') or '').strip(), MAX_HANDLE)
-        tiktok_handle = trunc((request.form.get('tiktok_handle') or '').strip(), MAX_HANDLE)
+        # novos campos sociais (sanitizados e truncados)
+        instagram_handle = sanitizar_texto(trunc((request.form.get('instagram_handle') or '').strip(), MAX_HANDLE))
+        linkedin_handle = sanitizar_texto(trunc((request.form.get('linkedin_handle') or '').strip(), MAX_HANDLE))
+        tiktok_handle = sanitizar_texto(trunc((request.form.get('tiktok_handle') or '').strip(), MAX_HANDLE))
 
         def build_url(base, handle, strip_at=False):
             if not handle:
@@ -132,6 +131,13 @@ def perfil():
         instagram_url = build_url("https://instagram.com/", instagram_handle, strip_at=True)
         linkedin_url = build_url("https://linkedin.com/in/", linkedin_handle)
         tiktok_url = build_url("https://tiktok.com/@", tiktok_handle, strip_at=True)
+
+        # modo de agendamento
+        scheduling_mode = request.form.get('scheduling_mode') or 'manual'
+        if scheduling_mode not in ('none', 'manual', 'auto'):
+            scheduling_mode = 'manual'
+
+        # monta dicionário data (substitui os campos anteriores)
 
         # disponibilidade (já fazia validação antes) -> validar/truncar
         availability_raw = request.form.get('availability', '') or ''
@@ -149,18 +155,21 @@ def perfil():
                 print("JSON de disponibilidade inválido:", e)
                 availability_json = ''
 
-        # campos textuais (truncados)
-        short_bio = trunc(request.form.get('short_bio') or '', MAX_SHORT_BIO)
-        full_bio = trunc(request.form.get('full_bio') or '', MAX_FULL_BIO)
-        website_url = trunc(request.form.get('website_url') or '', MAX_WEBSITE)
+        # campos textuais (truncados e sanitizados)
+        short_bio = sanitizar_texto(trunc(request.form.get('short_bio') or '', MAX_SHORT_BIO))
+        full_bio = sanitizar_texto(trunc(request.form.get('full_bio') or '', MAX_FULL_BIO))
+        
+        # valida e formata URL do site
+        website_raw = trunc(request.form.get('website_url') or '', MAX_WEBSITE)
+        website_valido, website_url = validar_url(website_raw) if website_raw else (True, '')
+        if not website_valido:
+            website_url = ''  # ignora URL inválida
 
-        # modo de agendamento
-        scheduling_mode = request.form.get('scheduling_mode') or 'manual'
-        if scheduling_mode not in ('none', 'manual', 'auto'):
-            scheduling_mode = 'manual'
-
-
-        # monta dicionário data (substitui os campos anteriores)
+        # valida telefone
+        whatsapp_raw = trunc(request.form.get('whatsapp_number') or '', MAX_WHATSAPP)
+        telefone_valido, whatsapp_number = validar_telefone(whatsapp_raw) if whatsapp_raw else (True, '')
+        if not telefone_valido:
+            whatsapp_number = ''  # ignora telefone inválido
         data = {
             'short_bio': short_bio,
             'full_bio': full_bio,

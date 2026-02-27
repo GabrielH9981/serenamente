@@ -42,4 +42,11 @@ document.addEventListener("DOMContentLoaded", function () {
             Inputmask({"mask": "99/99999[9]", "greedy": false}).mask(crpInput);
         }
     }
+    
+    // Validações em tempo real (se validators.js estiver carregado)
+    if (typeof setupCPFValidation === 'function') {
+        setupCPFValidation('cpf');
+        setupEmailValidation('email');
+        setupTelefoneValidation('whatsapp');
+    }
 });

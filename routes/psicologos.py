@@ -83,9 +83,16 @@ def psicologos_publicos():
 
     valor = request.args.get('valor')
     if valor and '-' in valor:
-        min_v, max_v = valor.split('-')
-        query += " AND CAST(SUBSTRING_INDEX(p.price_range, '-', 1) AS UNSIGNED) >= %s AND CAST(SUBSTRING_INDEX(p.price_range, '-', -1) AS UNSIGNED) <= %s"
-        params.extend([min_v, max_v])
+        try:
+            min_v, max_v = valor.split('-')
+            # Valida que são números inteiros
+            min_v = int(min_v)
+            max_v = int(max_v)
+            query += " AND CAST(SUBSTRING_INDEX(p.price_range, '-', 1) AS UNSIGNED) >= %s AND CAST(SUBSTRING_INDEX(p.price_range, '-', -1) AS UNSIGNED) <= %s"
+            params.extend([min_v, max_v])
+        except (ValueError, AttributeError):
+            # Se não for número válido, ignora o filtro
+            pass
 
     approach_id = request.args.get('approach')
     if approach_id:
@@ -103,7 +110,12 @@ def psicologos_publicos():
         params.append(publico_id)
 
     # Página e offset
-    page = int(request.args.get('page', 1))
+    try:
+        page = int(request.args.get('page', 1))
+        if page < 1:
+            page = 1
+    except (ValueError, TypeError):
+        page = 1
     per_page = 12
     offset = (page - 1) * per_page
 
@@ -304,8 +316,11 @@ def perfil_publico(profile_id):
     # pages
     pages = [ all_days[i:i+page_size] for i in range(0, len(all_days), page_size) ]
     total_pages = len(pages)
-    page = int(request.args.get('page', 1))
-    page = max(1, min(page, total_pages)) if pages else 1
+    try:
+        page = int(request.args.get('page', 1))
+        page = max(1, min(page, total_pages)) if pages else 1
+    except (ValueError, TypeError):
+        page = 1
     page_index = page - 1
     current_page_days = pages[page_index] if pages else []
 

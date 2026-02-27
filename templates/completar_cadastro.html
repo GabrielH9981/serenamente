@@ -29,27 +29,27 @@
                 <label class="form-label">Nome completo</label>
                 <input type="text" class="form-control" name="name"
                        value="{{ user.name or '' }}" placeholder="Seu nome"
-                       required>
+                       minlength="3" maxlength="100" required>
                 <small class="text-muted">Você pode ajustar o nome vindo da conta Google se quiser.</small>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">CRP</label>
                 <input id="crp" type="text" class="form-control" name="crp"
-                       value="{{ user.crp or '' }}" required>
+                       value="{{ user.crp or '' }}" placeholder="06/123456" required>
                 <small class="text-muted">Formato: 12/34567 ou 12/345678</small>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">CPF</label>
                 <input id="cpf" type="text" class="form-control" name="cpf"
-                       value="{{ user.cpf or '' }}" required>
+                       value="{{ user.cpf or '' }}" placeholder="123.456.789-09" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">WhatsApp</label>
                 <input id="whatsapp" type="text" class="form-control" name="whatsapp"
-                       value="{{ user.whatsapp_number or '' }}" required>
+                       value="{{ user.whatsapp_number or '' }}" placeholder="(11) 98765-4321" required>
             </div>
 
             <button type="submit" class="btn btn-primary w-100 mt-2">
@@ -59,6 +59,7 @@
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/validators.js') }}"></script>
 <script>
     function somenteNumeros(str) {
         return str.replace(/\D/g, '');
@@ -122,6 +123,12 @@
                 crpInput.value = mascaraCRP(e.target.value);
                 crpInput.selectionStart = crpInput.selectionEnd = crpInput.value.length;
             });
+        }
+        
+        // Validações em tempo real
+        if (typeof setupCPFValidation === 'function') {
+            setupCPFValidation('cpf');
+            setupTelefoneValidation('whatsapp');
         }
     });
 </script>

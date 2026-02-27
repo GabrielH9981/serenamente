@@ -1,26 +1,38 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, current_app
 from db.db import get_db_connection
 import secrets, string
-from datetime import datetime, timedelta  # ✅ Mantém apenas a classe e função necessárias
+from datetime import datetime, timedelta
 import os
+import bcrypt
 
 admin_bp = Blueprint('admin', __name__)
 
 # Configurações básicas do admin
 ADMIN_USER = os.environ.get('ADMIN_USER')
-ADMIN_PASS = os.environ.get('ADMIN_PASS')
+ADMIN_PASS_HASH = os.environ.get('ADMIN_PASS_HASH')
 
 
 @admin_bp.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
+    # Rate limit manual: 3 tentativas por minuto
+    limiter = current_app.extensions.get('limiter')
+    if limiter:
+        limiter.limit("3 per minute")(lambda: None)()
+    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username == ADMIN_USER and password == ADMIN_PASS:
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin.painel_admin'))
-        else:
-            flash('Credenciais inválidas', 'danger')
+        
+        # Verifica username e valida senha com bcrypt
+        if username == ADMIN_USER and ADMIN_PASS_HASH:
+            password_bytes = password.encode('utf-8')
+            hash_bytes = ADMIN_PASS_HASH.encode('utf-8')
+            
+            if bcrypt.checkpw(password_bytes, hash_bytes):
+                session['admin_logged_in'] = True
+                return redirect(url_for('admin.painel_admin'))
+        
+        flash('Credenciais inválidas', 'danger')
     return render_template('admin_login.html')
 
 

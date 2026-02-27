@@ -6,3 +6,10 @@ gunicorn
 cloudinary
 authlib
 requests
+python-dotenv
+bcrypt
+Flask-Limiter
+cryptography
+email-validator
+phonenumbers
+Flask-CORS

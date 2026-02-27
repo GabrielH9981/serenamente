@@ -2,21 +2,27 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from db.db import get_db_connection
-import secrets  # <-- novo
-from utils.validators import validar_cpf
+import secrets
+from utils.validators import validar_cpf, validar_email, validar_telefone, sanitizar_texto
 import random
 import datetime
 from utils.email_utils import send_verification_email
+from utils.logger import app_logger, error_logger
 
 
 auth_bp = Blueprint('auth', __name__)
 
 # vai receber o oauth vindo do app.py
 oauth = None
+limiter = None
 
 def init_oauth(oauth_obj):
     global oauth
     oauth = oauth_obj
+
+def init_limiter(limiter_obj):
+    global limiter
+    limiter = limiter_obj
 
 
 @auth_bp.before_app_request
@@ -64,9 +70,17 @@ def verificar_dados_obrigatorios():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # Aplica rate limit se disponível
+    if limiter:
+        limiter.limit("5 per minute")(lambda: None)()
     if request.method == 'POST':
-        email = request.form['email']
-        senha = request.form['senha']
+        email_raw = request.form.get('email', '').strip()
+        senha = request.form.get('senha', '')
+
+        # valida email
+        email_valido, email = validar_email(email_raw)
+        if not email_valido or not senha:
+            return render_template('login.html', error='Credenciais inválidas')
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
@@ -84,18 +98,46 @@ def login():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
+    # Aplica rate limit se disponível
+    if limiter:
+        limiter.limit("3 per hour")(lambda: None)()
     if 'user_id' in session:
         return render_template('index.html')
 
     if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        crp = request.form['crp']
-        cpf = request.form['cpf']
-        whatsapp = request.form['whatsapp']
-        senha = generate_password_hash(request.form['senha'])
+        name = sanitizar_texto(request.form.get('name', '').strip())
+        email_raw = request.form.get('email', '').strip()
+        crp = sanitizar_texto(request.form.get('crp', '').strip())
+        cpf = request.form.get('cpf', '').strip()
+        whatsapp = request.form.get('whatsapp', '').strip()
+        senha_raw = request.form.get('senha', '')
 
-        # ✅ valida CPF
+        # ✅ Validações
+        if not name or not email_raw or not crp or not cpf or not whatsapp or not senha_raw:
+            return render_template(
+                'register.html',
+                error='Preencha todos os campos obrigatórios.',
+                name=name,
+                email=email_raw,
+                crp=crp,
+                cpf=cpf,
+                whatsapp=whatsapp
+            )
+
+        # valida email
+        email_valido, email = validar_email(email_raw)
+        if not email_valido:
+            return render_template(
+                'register.html',
+                error='E-mail inválido.',
+                name=name,
+                email=email_raw,
+                crp=crp,
+                cpf=cpf,
+                whatsapp=whatsapp
+            )
+
+        # valida CPF
         if not validar_cpf(cpf):
             return render_template(
                 'register.html',
@@ -106,6 +148,21 @@ def register():
                 cpf=cpf,
                 whatsapp=whatsapp
             )
+
+        # valida telefone
+        telefone_valido, whatsapp_formatado = validar_telefone(whatsapp)
+        if not telefone_valido:
+            return render_template(
+                'register.html',
+                error='Número de WhatsApp inválido. Use formato: (11) 98765-4321',
+                name=name,
+                email=email,
+                crp=crp,
+                cpf=cpf,
+                whatsapp=whatsapp
+            )
+
+        senha = generate_password_hash(senha_raw)
 
         try:
             conn = get_db_connection()
@@ -121,13 +178,13 @@ def register():
                 cursor.execute("""
                     INSERT INTO users (name, email, password_hash, crp, cpf, whatsapp_number, is_active)
                     VALUES (%s, %s, %s, %s, %s, %s, 0)
-                """, (name, email, senha, crp, cpf, whatsapp))
+                """, (name, email, senha, crp, cpf, whatsapp_formatado))
                 conn.commit()
 
             return redirect(url_for('auth.login'))
 
         except Exception as err:
-            print(f"Erro no MySQL: {err}")
+            error_logger.error(f"Erro no registro: {err}")
             return render_template('register.html', error='Erro ao cadastrar. Tente novamente mais tarde.')
 
         finally:
@@ -145,9 +202,7 @@ def logout():
 
 @auth_bp.route('/login/google')
 def login_google():
-    # nome completo do endpoint do callback dentro do blueprint 'auth'
     redirect_uri = url_for('auth.auth_google_callback', _external=True)
-    print("REDIRECT URI GERADO:", redirect_uri)  # <-- adiciona isso
     return oauth.google.authorize_redirect(redirect_uri)
 
 
@@ -204,7 +259,7 @@ def auth_google_callback():
         return redirect(url_for('main.dashboard'))
 
     except Exception as e:
-        print(f"Erro no login com Google: {e}")
+        error_logger.error(f"Erro no login com Google: {e}")
         return render_template('login.html', error='Erro ao fazer login com Google.')
 
     finally:
@@ -221,13 +276,13 @@ def completar_cadastro():
 
     try:
         if request.method == 'POST':
-            name = request.form.get('name')
-            crp = request.form.get('crp')
-            cpf = request.form.get('cpf')
-            whatsapp = request.form.get('whatsapp')
+            name = sanitizar_texto(request.form.get('name', '').strip())
+            crp = sanitizar_texto(request.form.get('crp', '').strip())
+            cpf = request.form.get('cpf', '').strip()
+            whatsapp = request.form.get('whatsapp', '').strip()
 
             # campos obrigatórios
-            if not crp or not cpf or not whatsapp:
+            if not name or not crp or not cpf or not whatsapp:
                 cursor.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
                 user = cursor.fetchone()
                 return render_template(
@@ -246,11 +301,22 @@ def completar_cadastro():
                     error='CPF inválido.'
                 )
 
+            # ✅ valida telefone
+            telefone_valido, whatsapp_formatado = validar_telefone(whatsapp)
+            if not telefone_valido:
+                cursor.execute("SELECT * FROM users WHERE id = %s", (session['user_id'],))
+                user = cursor.fetchone()
+                return render_template(
+                    'completar_cadastro.html',
+                    user=user,
+                    error='Número de WhatsApp inválido. Use formato: (11) 98765-4321'
+                )
+
             cursor.execute("""
                 UPDATE users
                 SET name = %s, crp = %s, cpf = %s, whatsapp_number = %s
                 WHERE id = %s
-            """, (name, crp, cpf, whatsapp, session['user_id']))
+            """, (name, crp, cpf, whatsapp_formatado, session['user_id']))
             conn.commit()
 
             session['user_name'] = name
@@ -382,9 +448,11 @@ def alterar_email():
     cursor = conn.cursor(dictionary=True)
 
     if request.method == 'POST':
-        novo_email = request.form.get('email', '').strip()
+        novo_email_raw = request.form.get('email', '').strip()
 
-        if not novo_email:
+        # ✅ valida email
+        email_valido, novo_email = validar_email(novo_email_raw)
+        if not email_valido:
             cursor.execute("SELECT email FROM users WHERE id = %s", (session['user_id'],))
             user = cursor.fetchone()
             cursor.close()
